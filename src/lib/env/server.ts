@@ -33,3 +33,8 @@ export function isAuthConfigured(): boolean {
     DATABASE_URL: process.env.DATABASE_URL,
   }).success;
 }
+
+export function getCronSecret(): string | null {
+  const parsed = z.string().min(32).safeParse(process.env.CRON_SECRET);
+  return parsed.success ? parsed.data : null;
+}
