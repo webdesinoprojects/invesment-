@@ -87,6 +87,7 @@ model UserProfile {
   securityPinHash      String              @db.Text
   bep20WalletAddress   String?             @db.VarChar(64)
   status               UserStatus          @default(PENDING)
+  rank                 Int                 @default(0)
   isReferralActive     Boolean             @default(false)
   sponsorId            String?             @db.Uuid
   sponsor              UserProfile?        @relation("UserSponsor", fields: [sponsorId], references: [id], onDelete: SetNull)

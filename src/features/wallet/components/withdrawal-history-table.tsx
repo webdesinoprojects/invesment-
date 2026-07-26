@@ -39,6 +39,7 @@ export function WithdrawalHistoryTable({ history }: { history: WithdrawalHistory
                     {new Intl.DateTimeFormat("en-IN", {
                       dateStyle: "medium",
                       timeStyle: "short",
+                      timeZone: "Asia/Kolkata",
                     }).format(new Date(item.submittedAt))}
                   </TableCell>
                   <TableCell className="font-mono text-xs">{shortValue(item.walletAddress)}</TableCell>

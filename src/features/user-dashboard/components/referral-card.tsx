@@ -1,6 +1,6 @@
 import { formatUsd } from "@/lib/money/format-money";
 
-import { CopyReferralLink } from "./copy-referral-link";
+import { CopyReferralLink } from "@/features/referral/components/copy-referral-link";
 
 export function ReferralCard({
   directTeamCount,

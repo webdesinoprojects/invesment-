@@ -7,19 +7,14 @@ import type {
   DashboardData,
   DashboardIncome,
 } from "@/features/user-dashboard/types/dashboard";
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
-}
+import { getIndiaBusinessDayBounds } from "@/lib/date/business-day";
 
 export async function getDashboardData(
   userId: string,
   memberId: string,
 ): Promise<DashboardData> {
   const db = getPrisma();
-  const today = startOfUtcDay(new Date());
+  const today = getIndiaBusinessDayBounds();
 
   const [
     latestWalletEntry,
@@ -42,7 +37,8 @@ export async function getDashboardData(
     }),
     db.investment.aggregate({
       where: {
-        activatedAt: { gte: today },
+        status: { not: "CANCELLED" },
+        activatedAt: { gte: today.start, lt: today.end },
         user: {
           descendantLinks: {
             some: { ancestorId: userId, depth: { gt: 0 } },
@@ -53,6 +49,7 @@ export async function getDashboardData(
     }),
     db.investment.aggregate({
       where: {
+        status: { not: "CANCELLED" },
         user: {
           descendantLinks: {
             some: { ancestorId: userId, depth: { gt: 0 } },
