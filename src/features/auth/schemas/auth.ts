@@ -6,12 +6,16 @@ const memberId = z
   .toUpperCase()
   .regex(/^NP\d{6,10}$/, "Enter a valid invite ID.");
 
-const password = z
+export const passwordSchema = z
   .string()
   .min(8, "Password must contain at least 8 characters.")
   .max(64, "Password cannot exceed 64 characters.")
   .regex(/[A-Za-z]/, "Password must include a letter.")
   .regex(/\d/, "Password must include a number.");
+
+export const securityPinSchema = z
+  .string()
+  .regex(/^\d{4,6}$/, "Security PIN must be 4 to 6 digits.");
 
 export const loginSchema = z.object({
   loginId: z.string().trim().min(3, "Enter your email or member ID."),
@@ -38,11 +42,9 @@ export const registerSchema = z
       .string()
       .trim()
       .regex(/^\+?[1-9]\d{7,14}$/, "Enter a valid mobile number."),
-    password,
+    password: passwordSchema,
     confirmPassword: z.string(),
-    securityPin: z
-      .string()
-      .regex(/^\d{4,6}$/, "Security PIN must be 4 to 6 digits."),
+    securityPin: securityPinSchema,
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ["confirmPassword"],

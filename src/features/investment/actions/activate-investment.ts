@@ -8,9 +8,8 @@ import { activationSchema } from "@/features/investment/schemas/activation";
 import { activateInvestment } from "@/features/investment/services/activate-investment";
 import type { ActivateInvestmentResult } from "@/features/investment/types/investment";
 import { requireUser } from "@/lib/auth/require-user";
-import { getPrisma } from "@/lib/db/prisma";
 import { compareDecimalStrings } from "@/lib/money/compare-decimal";
-import { verifySecurityPin } from "@/lib/security/pin";
+import { verifyUserSecurityPin } from "@/lib/security/verify-user-pin";
 import type { ActionResult } from "@/types/action-result";
 
 export async function activateInvestmentAction(
@@ -34,13 +33,19 @@ export async function activateInvestmentAction(
     };
   }
 
-  const credential = await getPrisma().userProfile.findUnique({
-    where: { id: user.id },
-    select: { securityPinHash: true },
-  });
-  if (!credential || !(await verifySecurityPin(parsed.data.securityPin, credential.securityPinHash))) {
+  const pinVerification = await verifyUserSecurityPin(user.id, parsed.data.securityPin);
+  if (pinVerification.status === "LOCKED") {
     return {
-      ...failure("INVALID_SECURITY_PIN", "The security PIN is incorrect."),
+      ...failure("SECURITY_PIN_LOCKED", "Security PIN is temporarily locked. Try again in 15 minutes."),
+      fieldErrors: { securityPin: ["Too many incorrect attempts."] },
+    };
+  }
+  if (pinVerification.status === "INVALID") {
+    return {
+      ...failure(
+        "INVALID_SECURITY_PIN",
+        `The security PIN is incorrect. ${pinVerification.remainingAttempts} attempts remaining.`,
+      ),
       fieldErrors: { securityPin: ["Incorrect security PIN."] },
     };
   }

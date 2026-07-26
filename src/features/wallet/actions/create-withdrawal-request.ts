@@ -10,7 +10,7 @@ import { isWithdrawalOpen } from "@/features/wallet/services/withdrawal-calendar
 import { requireUser } from "@/lib/auth/require-user";
 import { getPrisma } from "@/lib/db/prisma";
 import { compareDecimalStrings } from "@/lib/money/compare-decimal";
-import { verifySecurityPin } from "@/lib/security/pin";
+import { verifyUserSecurityPin } from "@/lib/security/verify-user-pin";
 import type { ActionResult } from "@/types/action-result";
 
 export async function createWithdrawalRequestAction(
@@ -38,14 +38,24 @@ export async function createWithdrawalRequestAction(
 
   const profile = await getPrisma().userProfile.findUnique({
     where: { id: user.id },
-    select: { securityPinHash: true, bep20WalletAddress: true },
+    select: { bep20WalletAddress: true },
   });
   if (!profile?.bep20WalletAddress) {
     return failure("WALLET_NOT_CONFIGURED", "Add your BEP-20 wallet address in Profile first.");
   }
-  if (!(await verifySecurityPin(parsed.data.securityPin, profile.securityPinHash))) {
+  const pinVerification = await verifyUserSecurityPin(user.id, parsed.data.securityPin);
+  if (pinVerification.status === "LOCKED") {
     return {
-      ...failure("INVALID_SECURITY_PIN", "The security PIN is incorrect."),
+      ...failure("SECURITY_PIN_LOCKED", "Security PIN is temporarily locked. Try again in 15 minutes."),
+      fieldErrors: { securityPin: ["Too many incorrect attempts."] },
+    };
+  }
+  if (pinVerification.status === "INVALID") {
+    return {
+      ...failure(
+        "INVALID_SECURITY_PIN",
+        `The security PIN is incorrect. ${pinVerification.remainingAttempts} attempts remaining.`,
+      ),
       fieldErrors: { securityPin: ["Incorrect security PIN."] },
     };
   }

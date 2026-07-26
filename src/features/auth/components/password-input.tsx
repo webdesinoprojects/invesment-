@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,9 @@ export function PasswordInput({
   placeholder,
   autoComplete,
   invalid = false,
-}: {
+  className,
+  ...props
+}: Omit<ComponentProps<typeof Input>, "type"> & {
   id: string;
   name: string;
   placeholder: string;
@@ -30,7 +32,8 @@ export function PasswordInput({
         placeholder={placeholder}
         autoComplete={autoComplete}
         aria-invalid={invalid}
-        className="h-11 pr-11"
+        className={`h-11 pr-11 ${className ?? ""}`}
+        {...props}
       />
       <Button
         type="button"

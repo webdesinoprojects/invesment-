@@ -77,34 +77,36 @@ enum RoiRunStatus {
 }
 
 model UserProfile {
-  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  authUserId           String              @unique @db.Uuid
-  memberId             String              @unique @db.VarChar(16)
-  fullName             String              @db.VarChar(120)
-  email                String              @unique @db.VarChar(254)
-  mobile               String              @db.VarChar(24)
-  countryCode          String              @db.Char(2)
-  securityPinHash      String              @db.Text
-  bep20WalletAddress   String?             @db.VarChar(64)
-  status               UserStatus          @default(PENDING)
-  rank                 Int                 @default(0)
-  isReferralActive     Boolean             @default(false)
-  sponsorId            String?             @db.Uuid
-  sponsor              UserProfile?        @relation("UserSponsor", fields: [sponsorId], references: [id], onDelete: SetNull)
-  directReferrals      UserProfile[]       @relation("UserSponsor")
-  referralLink         ReferralLink?
-  ancestorLinks        ReferralClosure[]   @relation("ClosureAncestor")
-  descendantLinks      ReferralClosure[]   @relation("ClosureDescendant")
-  investments          Investment[]
-  fundedInvestments    Investment[]        @relation("InvestmentFundedBy")
-  depositRequests      DepositRequest[]
-  withdrawalRequests   WithdrawalRequest[]
-  walletEntries        WalletLedgerEntry[]
-  incomeEntries        IncomeLedgerEntry[] @relation("IncomeOwner")
-  sourcedIncomeEntries IncomeLedgerEntry[] @relation("IncomeSourceUser")
-  auditTargets         AuditLog[]          @relation("AuditTargetUser")
-  createdAt            DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
+  id                        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authUserId                String              @unique @db.Uuid
+  memberId                  String              @unique @db.VarChar(16)
+  fullName                  String              @db.VarChar(120)
+  email                     String              @unique @db.VarChar(254)
+  mobile                    String              @db.VarChar(24)
+  countryCode               String              @db.Char(2)
+  securityPinHash           String              @db.Text
+  securityPinFailedAttempts Int                 @default(0)
+  securityPinLockedUntil    DateTime?           @db.Timestamptz(3)
+  bep20WalletAddress        String?             @db.VarChar(64)
+  status                    UserStatus          @default(PENDING)
+  rank                      Int                 @default(0)
+  isReferralActive          Boolean             @default(false)
+  sponsorId                 String?             @db.Uuid
+  sponsor                   UserProfile?        @relation("UserSponsor", fields: [sponsorId], references: [id], onDelete: SetNull)
+  directReferrals           UserProfile[]       @relation("UserSponsor")
+  referralLink              ReferralLink?
+  ancestorLinks             ReferralClosure[]   @relation("ClosureAncestor")
+  descendantLinks           ReferralClosure[]   @relation("ClosureDescendant")
+  investments               Investment[]
+  fundedInvestments         Investment[]        @relation("InvestmentFundedBy")
+  depositRequests           DepositRequest[]
+  withdrawalRequests        WithdrawalRequest[]
+  walletEntries             WalletLedgerEntry[]
+  incomeEntries             IncomeLedgerEntry[] @relation("IncomeOwner")
+  sourcedIncomeEntries      IncomeLedgerEntry[] @relation("IncomeSourceUser")
+  auditTargets              AuditLog[]          @relation("AuditTargetUser")
+  createdAt                 DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt                 DateTime            @updatedAt @db.Timestamptz(3)
 
   @@index([sponsorId])
   @@index([status, createdAt])
