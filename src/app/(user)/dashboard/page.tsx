@@ -1,38 +1,38 @@
-import { LogOut } from "lucide-react";
 import type { Metadata } from "next";
 
-import { Button } from "@/components/ui/button";
-import { logoutAction } from "@/features/auth/actions/logout";
-import { AuthBrand } from "@/features/auth/components/auth-brand";
+import { PortfolioOverview } from "@/features/user-dashboard/components/portfolio-overview";
+import { ReferralCard } from "@/features/user-dashboard/components/referral-card";
+import { ShortcutGrid } from "@/features/user-dashboard/components/shortcut-grid";
+import { WalletBalanceCard } from "@/features/user-dashboard/components/wallet-balance-card";
+import { getDashboardData } from "@/features/user-dashboard/queries/get-dashboard-data";
 import { requireUser } from "@/lib/auth/require-user";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const user = await requireUser();
+  const dashboard = await getDashboardData(user.id, user.memberId);
 
   return (
-    <main className="min-h-svh bg-background p-4 sm:p-6">
-      <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between border-b border-border pb-4">
-          <AuthBrand compact />
-          <form action={logoutAction}>
-            <Button type="submit" variant="outline">
-              <LogOut aria-hidden="true" />
-              Logout
-            </Button>
-          </form>
-        </header>
-        <section className="mt-8 rounded-lg border border-border bg-card p-6">
-          <p className="text-sm text-muted-foreground">Authenticated account</p>
-          <h1 className="mt-1 text-2xl font-semibold">{user.fullName}</h1>
-          <p className="mt-2 font-mono text-sm text-primary">{user.memberId}</p>
-          <p className="mt-6 text-sm text-muted-foreground">
-            The wallet dashboard is the next feature checkpoint. No placeholder
-            balances are being shown.
-          </p>
-        </section>
-      </div>
+    <main className="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6 sm:py-7">
+      <WalletBalanceCard balance={dashboard.walletBalance} />
+      <ReferralCard
+        directTeamCount={dashboard.directTeamCount}
+        totalDownlineCount={dashboard.totalDownlineCount}
+        directIncome={dashboard.income.directReferral}
+        levelIncome={dashboard.income.levelIncome}
+        rankRewards={dashboard.income.rankRewards}
+        referralUrl={dashboard.referralUrl}
+        isReferralActive={dashboard.isReferralActive}
+      />
+      <ShortcutGrid />
+      <PortfolioOverview
+        activeInvestment={dashboard.activeInvestment}
+        dailyRoi={dashboard.income.dailyRoi}
+        todayBusiness={dashboard.todayBusiness}
+        totalBusiness={dashboard.totalBusiness}
+        totalIncome={dashboard.income.total}
+      />
     </main>
   );
 }
