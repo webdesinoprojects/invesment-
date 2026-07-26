@@ -38,3 +38,8 @@ export function getCronSecret(): string | null {
   const parsed = z.string().min(32).safeParse(process.env.CRON_SECRET);
   return parsed.success ? parsed.data : null;
 }
+
+export function getPasswordRecoverySecret(): string | null {
+  const parsed = z.string().min(32).safeParse(process.env.PASSWORD_RECOVERY_SECRET);
+  return parsed.success ? parsed.data : null;
+}
