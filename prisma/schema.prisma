@@ -95,6 +95,7 @@ model UserProfile {
   ancestorLinks        ReferralClosure[]   @relation("ClosureAncestor")
   descendantLinks      ReferralClosure[]   @relation("ClosureDescendant")
   investments          Investment[]
+  fundedInvestments    Investment[]        @relation("InvestmentFundedBy")
   depositRequests      DepositRequest[]
   withdrawalRequests   WithdrawalRequest[]
   walletEntries        WalletLedgerEntry[]
@@ -163,8 +164,10 @@ model Investment {
   paidOutAmount     Decimal             @default(0) @db.Decimal(20, 6)
   status            InvestmentStatus    @default(ACTIVE)
   source            InvestmentSource
+  fundedByUserId    String?             @db.Uuid
   activatedById     String?             @db.Uuid
   user              UserProfile         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  fundedBy          UserProfile?        @relation("InvestmentFundedBy", fields: [fundedByUserId], references: [id], onDelete: SetNull)
   activatedBy       AdminProfile?       @relation("InvestmentActivatedBy", fields: [activatedById], references: [id], onDelete: SetNull)
   incomeEntries     IncomeLedgerEntry[]
   roiCredits        RoiCredit[]
@@ -175,6 +178,7 @@ model Investment {
   updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
 
   @@index([userId, status])
+  @@index([fundedByUserId, activatedAt])
   @@index([status, activatedAt])
   @@map("investments")
 }
@@ -227,6 +231,7 @@ model WithdrawalRequest {
 
 model WalletLedgerEntry {
   id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sequence         BigInt          @unique @default(autoincrement())
   userId           String          @db.Uuid
   direction        LedgerDirection
   category         LedgerCategory
@@ -242,6 +247,7 @@ model WalletLedgerEntry {
   createdAt        DateTime        @default(now()) @db.Timestamptz(3)
 
   @@index([userId, createdAt])
+  @@index([userId, sequence])
   @@index([category, createdAt])
   @@map("wallet_ledger_entries")
 }

@@ -56,7 +56,7 @@ async function reserveWithdrawal(
     }),
     tx.walletLedgerEntry.findFirst({
       where: { userId: input.userId },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: { sequence: "desc" },
       select: { balanceAfter: true },
     }),
   ]);

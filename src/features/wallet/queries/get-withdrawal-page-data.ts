@@ -15,7 +15,7 @@ export async function getWithdrawalPageData(userId: string): Promise<WithdrawalP
     }),
     db.walletLedgerEntry.findFirst({
       where: { userId },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: { sequence: "desc" },
       select: { balanceAfter: true },
     }),
     db.withdrawalRequest.findMany({

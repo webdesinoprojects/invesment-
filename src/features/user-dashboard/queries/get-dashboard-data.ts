@@ -1,5 +1,6 @@
 import "server-only";
 
+import { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/db/prisma";
 import { getServerEnv } from "@/lib/env/server";
 import type {
@@ -32,7 +33,7 @@ export async function getDashboardData(
   ] = await Promise.all([
     db.walletLedgerEntry.findFirst({
       where: { userId },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: { sequence: "desc" },
       select: { balanceAfter: true },
     }),
     db.investment.aggregate({
@@ -83,10 +84,10 @@ export async function getDashboardData(
     salary: "0",
     total: "0",
   };
-  let totalIncome = 0;
+  let totalIncome = new Prisma.Decimal(0);
   for (const row of groupedIncome) {
     const value = row._sum.amount?.toString() ?? "0";
-    totalIncome += Number(value);
+    totalIncome = totalIncome.plus(value);
     if (row.type === "DAILY_ROI") income.dailyRoi = value;
     if (row.type === "DIRECT_REFERRAL") income.directReferral = value;
     if (row.type === "LEVEL_INCOME") income.levelIncome = value;
