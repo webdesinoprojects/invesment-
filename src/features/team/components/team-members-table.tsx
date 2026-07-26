@@ -1,4 +1,5 @@
 import { StatusBadge } from "@/components/data-display/status-badge";
+import { QueryPagination } from "@/components/data-display/query-pagination";
 import {
   Table,
   TableBody,
@@ -7,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TeamPagination } from "@/features/team/components/team-pagination";
 import type { TeamMemberRow, TeamPageData, TeamTab } from "@/features/team/types/team";
 import { formatUsd } from "@/lib/money/format-money";
 
@@ -78,7 +78,12 @@ export function TeamMembersTable({
           </Table>
         </div>
       )}
-      <TeamPagination tab={tab} {...pagination} />
+      <QueryPagination
+        basePath="/team"
+        query={{ tab }}
+        rowLabel="members"
+        {...pagination}
+      />
     </section>
   );
 }
