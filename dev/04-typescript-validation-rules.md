@@ -4,7 +4,7 @@ Use strict TypeScript as a correctness tool, not decoration.
 
 ## TypeScript Baseline
 
-Use TypeScript `7.0.2` stable if the dependency graph supports it. If Next/shadcn tooling requires a lower range, pin the newest compatible stable release and document why.
+Use TypeScript `5.9.3`, pinned exactly. Prisma 7 documents TypeScript 5.9 as its recommended line, and this is the newest stable release resolved by the current toolchain.
 
 Keep strict settings:
 

@@ -1,6 +1,6 @@
 # shadcn/ui Component Plan
 
-Use shadcn/ui instead of hand-rolling common accessible primitives. New projects use Tailwind v4, React 19, OKLCH tokens, and `new-york` style.
+Use shadcn/ui instead of hand-rolling common accessible primitives. This project uses Tailwind v4, React 19, OKLCH tokens, and the current `radix-nova` preset.
 
 ## CLI Rules
 

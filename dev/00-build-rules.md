@@ -8,9 +8,9 @@ These rules are mandatory for this project. They exist because this app handles 
 
 - Next.js: `16.2.12` stable / Active LTS.
 - React: React 19 line. Use the stable `react@latest` compatible with Next 16.2.11 at install time, then pin exact versions.
-- TypeScript: `7.0.2` stable if package compatibility allows it; otherwise pin the newest stable supported by Next/shadcn dependencies.
-- Tailwind CSS: v4 line, currently v4.3 from official Tailwind release notes.
-- shadcn/ui: latest CLI/components, Tailwind v4 + React 19 mode, `new-york` style, `sonner` instead of deprecated toast.
+- TypeScript: `5.9.3`, the newest stable release installed and supported by the current Next/Prisma toolchain.
+- Tailwind CSS: `4.3.3`.
+- shadcn/ui: CLI `4.15.0`, Tailwind v4 + React 19 mode, current `radix-nova` preset, and `sonner` for toasts.
 - Database: Supabase Postgres.
 - Data access: Prisma ORM server-side only, plus Supabase SSR Auth where session/auth is needed.
 - Media: ImageKit Next SDK for hosted media; `next/image` for local static assets.
