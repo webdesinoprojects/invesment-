@@ -2,7 +2,7 @@ export type WithdrawalHistoryItem = {
   id: string;
   amount: string;
   walletAddress: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "PROCESSING" | "PAID" | "REJECTED" | "CANCELLED" | "FAILED";
   submittedAt: string;
   reviewedAt: string | null;
   paymentHash: string | null;

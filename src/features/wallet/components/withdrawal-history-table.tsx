@@ -50,7 +50,7 @@ export function WithdrawalHistoryTable({ history }: { history: WithdrawalHistory
                       {item.status === "REJECTED" && item.rejectionReason ? (
                         <p className="max-w-64 text-xs text-red-300">{item.rejectionReason}</p>
                       ) : null}
-                      {item.status === "APPROVED" && item.paymentHash ? (
+                      {item.status === "PAID" && item.paymentHash ? (
                         <p className="font-mono text-xs text-muted-foreground">
                           {shortValue(item.paymentHash)}
                         </p>

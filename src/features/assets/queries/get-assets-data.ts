@@ -21,7 +21,7 @@ export async function getAssetsData(userId: string): Promise<AssetsData> {
       _sum: { amount: true },
     }),
     db.withdrawalRequest.aggregate({
-      where: { userId, status: "APPROVED" },
+      where: { userId, status: "PAID" },
       _sum: { amount: true },
     }),
   ]);

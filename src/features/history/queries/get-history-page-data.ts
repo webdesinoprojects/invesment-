@@ -123,7 +123,7 @@ function createPagination(totalRows: number, requestedPage: number): HistoryPagi
 
 function mapWalletEntry(entry: {
   id: string;
-  direction: "CREDIT" | "DEBIT" | "DEDUCTION" | "HOLD" | "RELEASE";
+  direction: "CREDIT" | "DEBIT" | "DEDUCTION" | "HOLD" | "RELEASE" | "SETTLE";
   amount: { toString(): string };
   description: string;
   createdAt: Date;

@@ -21,7 +21,14 @@ export type RequestHistoryRow = {
   id: string;
   date: string;
   amount: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status:
+    | "PENDING"
+    | "PROCESSING"
+    | "PAID"
+    | "APPROVED"
+    | "REJECTED"
+    | "CANCELLED"
+    | "FAILED";
   reference: string | null;
   rejectionReason: string | null;
 };

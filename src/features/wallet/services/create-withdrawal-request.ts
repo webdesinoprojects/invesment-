@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { Prisma } from "@/generated/prisma/client";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/db/prisma";
@@ -68,14 +70,7 @@ async function reserveWithdrawal(
     return { ok: false, code: "INSUFFICIENT_FUNDS" };
   }
 
-  const request = await tx.withdrawalRequest.create({
-    data: {
-      userId: input.userId,
-      amount: requestedAmount,
-      walletAddress: profile.bep20WalletAddress,
-    },
-    select: { id: true },
-  });
+  const requestId = randomUUID();
   const hold = await tx.walletLedgerEntry.create({
     data: {
       userId: input.userId,
@@ -84,15 +79,21 @@ async function reserveWithdrawal(
       amount: requestedAmount,
       balanceAfter: availableBalance.minus(requestedAmount),
       referenceType: "WithdrawalRequest",
-      referenceId: request.id,
+      referenceId: requestId,
       idempotencyKey: input.idempotencyKey,
       description: "Funds held for pending withdrawal request.",
     },
     select: { id: true },
   });
-  await tx.withdrawalRequest.update({
-    where: { id: request.id },
-    data: { holdLedgerEntryId: hold.id },
+  await tx.withdrawalRequest.create({
+    data: {
+      id: requestId,
+      userId: input.userId,
+      amount: requestedAmount,
+      netAmount: requestedAmount,
+      walletAddress: profile.bep20WalletAddress,
+      holdLedgerEntryId: hold.id,
+    },
   });
 
   return { ok: true };

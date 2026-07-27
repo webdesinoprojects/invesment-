@@ -19,14 +19,30 @@ enum AdminRole {
   VIEWER
 }
 
-enum RequestStatus {
+enum DepositStatus {
   PENDING
   APPROVED
   REJECTED
 }
 
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  PAID
+  REJECTED
+  CANCELLED
+  FAILED
+}
+
+enum ActionSource {
+  ADMIN
+  SYSTEM
+  IMPORT
+}
+
 enum InvestmentStatus {
   ACTIVE
+  PAUSED
   COMPLETED
   CANCELLED
 }
@@ -43,6 +59,7 @@ enum LedgerDirection {
   DEDUCTION
   HOLD
   RELEASE
+  SETTLE
 }
 
 enum LedgerCategory {
@@ -76,6 +93,23 @@ enum RoiRunStatus {
   FAILED
 }
 
+enum RoiRunTrigger {
+  SCHEDULED
+  MANUAL
+  RETRY
+}
+
+enum AuditActorType {
+  ADMIN
+  SYSTEM
+}
+
+enum AuditOutcome {
+  SUCCESS
+  DENIED
+  FAILED
+}
+
 model UserProfile {
   id                        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   authUserId                String              @unique @db.Uuid
@@ -91,7 +125,11 @@ model UserProfile {
   status                    UserStatus          @default(PENDING)
   rank                      Int                 @default(0)
   isReferralActive          Boolean             @default(false)
+  blockedAt                 DateTime?           @db.Timestamptz(3)
+  blockedByAdminId          String?             @db.Uuid
+  blockReason               String?             @db.VarChar(500)
   sponsorId                 String?             @db.Uuid
+  blockedByAdmin            AdminProfile?       @relation("UserBlockedByAdmin", fields: [blockedByAdminId], references: [id], onDelete: SetNull)
   sponsor                   UserProfile?        @relation("UserSponsor", fields: [sponsorId], references: [id], onDelete: SetNull)
   directReferrals           UserProfile[]       @relation("UserSponsor")
   referralLink              ReferralLink?
@@ -105,28 +143,52 @@ model UserProfile {
   incomeEntries             IncomeLedgerEntry[] @relation("IncomeOwner")
   sourcedIncomeEntries      IncomeLedgerEntry[] @relation("IncomeSourceUser")
   auditTargets              AuditLog[]          @relation("AuditTargetUser")
+  adminNotes                AdminUserNote[]
   createdAt                 DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt                 DateTime            @updatedAt @db.Timestamptz(3)
 
   @@index([sponsorId])
+  @@index([blockedByAdminId, blockedAt])
   @@index([status, createdAt])
   @@map("user_profiles")
 }
 
 model AdminProfile {
-  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  authUserId           String              @unique @db.Uuid
-  displayName          String              @db.VarChar(120)
-  role                 AdminRole
-  isActive             Boolean             @default(true)
-  reviewedDeposits     DepositRequest[]    @relation("DepositReviewedBy")
-  reviewedWithdrawals  WithdrawalRequest[] @relation("WithdrawalReviewedBy")
-  activatedInvestments Investment[]        @relation("InvestmentActivatedBy")
-  createdWalletEntries WalletLedgerEntry[] @relation("WalletEntryCreatedBy")
-  audits               AuditLog[]          @relation("AuditActor")
-  createdAt            DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authUserId            String                  @unique @db.Uuid
+  email                 String?                 @unique @db.VarChar(254)
+  displayName           String                  @db.VarChar(120)
+  role                  AdminRole
+  isActive              Boolean                 @default(true)
+  lastLoginAt           DateTime?               @db.Timestamptz(3)
+  deactivatedAt         DateTime?               @db.Timestamptz(3)
+  deactivationReason    String?                 @db.VarChar(500)
+  createdByAdminId      String?                 @db.Uuid
+  deactivatedByAdminId  String?                 @db.Uuid
+  createdByAdmin        AdminProfile?           @relation("AdminCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAdmins         AdminProfile[]          @relation("AdminCreatedBy")
+  deactivatedByAdmin    AdminProfile?           @relation("AdminDeactivatedBy", fields: [deactivatedByAdminId], references: [id], onDelete: SetNull)
+  deactivatedAdmins     AdminProfile[]          @relation("AdminDeactivatedBy")
+  blockedUsers          UserProfile[]           @relation("UserBlockedByAdmin")
+  reviewedDeposits      DepositRequest[]        @relation("DepositReviewedBy")
+  reviewedWithdrawals   WithdrawalRequest[]     @relation("WithdrawalReviewedBy")
+  processingWithdrawals WithdrawalRequest[]     @relation("WithdrawalProcessedBy")
+  paidWithdrawals       WithdrawalRequest[]     @relation("WithdrawalPaidBy")
+  activatedInvestments  Investment[]            @relation("InvestmentActivatedBy")
+  changedInvestments    Investment[]            @relation("InvestmentStatusChangedBy")
+  createdWalletEntries  WalletLedgerEntry[]     @relation("WalletEntryCreatedBy")
+  reversedIncomeEntries IncomeLedgerEntry[]     @relation("IncomeReversedBy")
+  triggeredRoiRuns      RoiRun[]                @relation("RoiRunTriggeredBy")
+  updatedSettings       SystemSetting[]         @relation("SettingUpdatedBy")
+  settingRevisions      SystemSettingRevision[]
+  userNotes             AdminUserNote[]
+  audits                AuditLog[]              @relation("AuditActor")
+  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                @updatedAt @db.Timestamptz(3)
 
+  @@index([role, isActive])
+  @@index([createdByAdminId])
+  @@index([deactivatedByAdminId])
   @@map("admin_profiles")
 }
 
@@ -169,12 +231,16 @@ model Investment {
   source            InvestmentSource
   fundedByUserId    String?             @db.Uuid
   activatedById     String?             @db.Uuid
+  statusChangedById String?             @db.Uuid
+  statusReason      String?             @db.VarChar(500)
   user              UserProfile         @relation(fields: [userId], references: [id], onDelete: Restrict)
   fundedBy          UserProfile?        @relation("InvestmentFundedBy", fields: [fundedByUserId], references: [id], onDelete: SetNull)
   activatedBy       AdminProfile?       @relation("InvestmentActivatedBy", fields: [activatedById], references: [id], onDelete: SetNull)
+  statusChangedBy   AdminProfile?       @relation("InvestmentStatusChangedBy", fields: [statusChangedById], references: [id], onDelete: SetNull)
   incomeEntries     IncomeLedgerEntry[]
   roiCredits        RoiCredit[]
   activatedAt       DateTime            @default(now()) @db.Timestamptz(3)
+  pausedAt          DateTime?           @db.Timestamptz(3)
   completedAt       DateTime?           @db.Timestamptz(3)
   cancelledAt       DateTime?           @db.Timestamptz(3)
   createdAt         DateTime            @default(now()) @db.Timestamptz(3)
@@ -182,116 +248,172 @@ model Investment {
 
   @@index([userId, status])
   @@index([fundedByUserId, activatedAt])
+  @@index([statusChangedById, updatedAt])
   @@index([status, activatedAt])
   @@map("investments")
 }
 
 model DepositRequest {
-  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String        @db.Uuid
-  amount          Decimal       @db.Decimal(20, 6)
-  currency        String        @default("USDT") @db.VarChar(8)
-  network         String        @default("BEP20") @db.VarChar(16)
-  transactionHash String?       @unique @db.VarChar(128)
-  note            String?       @db.VarChar(500)
-  status          RequestStatus @default(PENDING)
-  reviewedById    String?       @db.Uuid
-  rejectionReason String?       @db.VarChar(500)
-  user            UserProfile   @relation(fields: [userId], references: [id], onDelete: Restrict)
-  reviewedBy      AdminProfile? @relation("DepositReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
-  submittedAt     DateTime      @default(now()) @db.Timestamptz(3)
-  reviewedAt      DateTime?     @db.Timestamptz(3)
-  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String             @db.Uuid
+  amount              Decimal            @db.Decimal(20, 6)
+  approvedAmount      Decimal?           @db.Decimal(20, 6)
+  currency            String             @default("USDT") @db.VarChar(8)
+  network             String             @default("BEP20") @db.VarChar(16)
+  senderWalletAddress String?            @db.VarChar(64)
+  transactionHash     String?            @unique @db.VarChar(128)
+  note                String?            @db.VarChar(500)
+  status              DepositStatus      @default(PENDING)
+  reviewSource        ActionSource?
+  reviewedById        String?            @db.Uuid
+  creditLedgerEntryId String?            @unique @db.Uuid
+  reviewNote          String?            @db.VarChar(500)
+  rejectionReason     String?            @db.VarChar(500)
+  version             Int                @default(0)
+  user                UserProfile        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  reviewedBy          AdminProfile?      @relation("DepositReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  creditLedgerEntry   WalletLedgerEntry? @relation("DepositCreditLedger", fields: [creditLedgerEntryId], references: [id], onDelete: Restrict)
+  submittedAt         DateTime           @default(now()) @db.Timestamptz(3)
+  reviewedAt          DateTime?          @db.Timestamptz(3)
+  createdAt           DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
 
   @@index([status, submittedAt])
   @@index([userId, submittedAt])
+  @@index([reviewedById, reviewedAt])
+  @@index([reviewedAt])
   @@map("deposit_requests")
 }
 
 model WithdrawalRequest {
-  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId            String        @db.Uuid
-  amount            Decimal       @db.Decimal(20, 6)
-  currency          String        @default("USDT") @db.VarChar(8)
-  walletAddress     String        @db.VarChar(64)
-  status            RequestStatus @default(PENDING)
-  reviewedById      String?       @db.Uuid
-  paymentHash       String?       @db.VarChar(128)
-  rejectionReason   String?       @db.VarChar(500)
-  holdLedgerEntryId String?       @unique @db.Uuid
-  user              UserProfile   @relation(fields: [userId], references: [id], onDelete: Restrict)
-  reviewedBy        AdminProfile? @relation("WithdrawalReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
-  submittedAt       DateTime      @default(now()) @db.Timestamptz(3)
-  reviewedAt        DateTime?     @db.Timestamptz(3)
-  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+  id                      String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                  String             @db.Uuid
+  amount                  Decimal            @db.Decimal(20, 6)
+  feeAmount               Decimal            @default(0) @db.Decimal(20, 6)
+  netAmount               Decimal?           @db.Decimal(20, 6)
+  currency                String             @default("USDT") @db.VarChar(8)
+  network                 String             @default("BEP20") @db.VarChar(16)
+  walletAddress           String             @db.VarChar(64)
+  status                  WithdrawalStatus   @default(PENDING)
+  reviewSource            ActionSource?
+  reviewedById            String?            @db.Uuid
+  processedById           String?            @db.Uuid
+  paidById                String?            @db.Uuid
+  paymentHash             String?            @unique @db.VarChar(128)
+  reviewNote              String?            @db.VarChar(500)
+  rejectionReason         String?            @db.VarChar(500)
+  failureReason           String?            @db.VarChar(500)
+  holdLedgerEntryId       String?            @unique @db.Uuid
+  settlementLedgerEntryId String?            @unique @db.Uuid
+  releaseLedgerEntryId    String?            @unique @db.Uuid
+  version                 Int                @default(0)
+  user                    UserProfile        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  reviewedBy              AdminProfile?      @relation("WithdrawalReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  processedBy             AdminProfile?      @relation("WithdrawalProcessedBy", fields: [processedById], references: [id], onDelete: SetNull)
+  paidBy                  AdminProfile?      @relation("WithdrawalPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
+  holdLedgerEntry         WalletLedgerEntry? @relation("WithdrawalHoldLedger", fields: [holdLedgerEntryId], references: [id], onDelete: Restrict)
+  settlementLedgerEntry   WalletLedgerEntry? @relation("WithdrawalSettlementLedger", fields: [settlementLedgerEntryId], references: [id], onDelete: Restrict)
+  releaseLedgerEntry      WalletLedgerEntry? @relation("WithdrawalReleaseLedger", fields: [releaseLedgerEntryId], references: [id], onDelete: Restrict)
+  submittedAt             DateTime           @default(now()) @db.Timestamptz(3)
+  reviewedAt              DateTime?          @db.Timestamptz(3)
+  processingStartedAt     DateTime?          @db.Timestamptz(3)
+  paidAt                  DateTime?          @db.Timestamptz(3)
+  cancelledAt             DateTime?          @db.Timestamptz(3)
+  failedAt                DateTime?          @db.Timestamptz(3)
+  createdAt               DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime           @updatedAt @db.Timestamptz(3)
 
   @@index([status, submittedAt])
   @@index([userId, submittedAt])
+  @@index([reviewedById, reviewedAt])
+  @@index([processedById, processingStartedAt])
+  @@index([paidById, paidAt])
   @@map("withdrawal_requests")
 }
 
 model WalletLedgerEntry {
-  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sequence         BigInt          @unique @default(autoincrement())
-  userId           String          @db.Uuid
-  direction        LedgerDirection
-  category         LedgerCategory
-  amount           Decimal         @db.Decimal(20, 6)
-  balanceAfter     Decimal         @db.Decimal(20, 6)
-  referenceType    String          @db.VarChar(64)
-  referenceId      String?         @db.Uuid
-  idempotencyKey   String?         @unique @db.VarChar(160)
-  description      String          @db.VarChar(500)
-  createdByAdminId String?         @db.Uuid
-  user             UserProfile     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  createdByAdmin   AdminProfile?   @relation("WalletEntryCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
-  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sequence           BigInt             @unique @default(autoincrement())
+  userId             String             @db.Uuid
+  direction          LedgerDirection
+  category           LedgerCategory
+  amount             Decimal            @db.Decimal(20, 6)
+  balanceAfter       Decimal            @db.Decimal(20, 6)
+  referenceType      String             @db.VarChar(64)
+  referenceId        String?            @db.Uuid
+  idempotencyKey     String?            @unique @db.VarChar(160)
+  reversalOfEntryId  String?            @unique @db.Uuid
+  reversalReason     String?            @db.VarChar(500)
+  metadata           Json?
+  description        String             @db.VarChar(500)
+  createdByAdminId   String?            @db.Uuid
+  user               UserProfile        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdByAdmin     AdminProfile?      @relation("WalletEntryCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  reversalOfEntry    WalletLedgerEntry? @relation("WalletEntryReversal", fields: [reversalOfEntryId], references: [id], onDelete: Restrict)
+  reversedByEntry    WalletLedgerEntry? @relation("WalletEntryReversal")
+  creditedDeposit    DepositRequest?    @relation("DepositCreditLedger")
+  heldWithdrawal     WithdrawalRequest? @relation("WithdrawalHoldLedger")
+  settledWithdrawal  WithdrawalRequest? @relation("WithdrawalSettlementLedger")
+  releasedWithdrawal WithdrawalRequest? @relation("WithdrawalReleaseLedger")
+  reversedIncome     IncomeLedgerEntry? @relation("IncomeReversalLedger")
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
 
   @@index([userId, createdAt])
   @@index([userId, sequence])
   @@index([category, createdAt])
+  @@index([createdByAdminId, createdAt])
   @@map("wallet_ledger_entries")
 }
 
 model IncomeLedgerEntry {
-  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String       @db.Uuid
-  sourceUserId   String?      @db.Uuid
-  investmentId   String?      @db.Uuid
-  type           IncomeType
-  status         IncomeStatus @default(CREDITED)
-  level          Int?
-  percent        Decimal?     @db.Decimal(7, 4)
-  baseAmount     Decimal?     @db.Decimal(20, 6)
-  amount         Decimal      @db.Decimal(20, 6)
-  idempotencyKey String       @unique @db.VarChar(160)
-  description    String       @db.VarChar(500)
-  user           UserProfile  @relation("IncomeOwner", fields: [userId], references: [id], onDelete: Restrict)
-  sourceUser     UserProfile? @relation("IncomeSourceUser", fields: [sourceUserId], references: [id], onDelete: SetNull)
-  investment     Investment?  @relation(fields: [investmentId], references: [id], onDelete: SetNull)
-  roiCredit      RoiCredit?
-  creditedAt     DateTime     @default(now()) @db.Timestamptz(3)
-  reversedAt     DateTime?    @db.Timestamptz(3)
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String             @db.Uuid
+  sourceUserId          String?            @db.Uuid
+  investmentId          String?            @db.Uuid
+  type                  IncomeType
+  status                IncomeStatus       @default(CREDITED)
+  level                 Int?
+  percent               Decimal?           @db.Decimal(7, 4)
+  baseAmount            Decimal?           @db.Decimal(20, 6)
+  amount                Decimal            @db.Decimal(20, 6)
+  idempotencyKey        String             @unique @db.VarChar(160)
+  reversedByAdminId     String?            @db.Uuid
+  reversalWalletEntryId String?            @unique @db.Uuid
+  reversalSource        ActionSource?
+  reversalReason        String?            @db.VarChar(500)
+  description           String             @db.VarChar(500)
+  user                  UserProfile        @relation("IncomeOwner", fields: [userId], references: [id], onDelete: Restrict)
+  sourceUser            UserProfile?       @relation("IncomeSourceUser", fields: [sourceUserId], references: [id], onDelete: SetNull)
+  investment            Investment?        @relation(fields: [investmentId], references: [id], onDelete: SetNull)
+  reversedByAdmin       AdminProfile?      @relation("IncomeReversedBy", fields: [reversedByAdminId], references: [id], onDelete: SetNull)
+  reversalWalletEntry   WalletLedgerEntry? @relation("IncomeReversalLedger", fields: [reversalWalletEntryId], references: [id], onDelete: Restrict)
+  roiCredit             RoiCredit?
+  creditedAt            DateTime           @default(now()) @db.Timestamptz(3)
+  reversedAt            DateTime?          @db.Timestamptz(3)
 
   @@index([userId, type, creditedAt])
   @@index([sourceUserId])
+  @@index([reversedByAdminId, reversedAt])
   @@map("income_ledger_entries")
 }
 
 model RoiRun {
-  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  runDate     DateTime     @unique @db.Date
-  status      RoiRunStatus @default(RUNNING)
-  processed   Int          @default(0)
-  credited    Int          @default(0)
-  failed      Int          @default(0)
-  errorDetail String?      @db.VarChar(1000)
-  credits     RoiCredit[]
-  startedAt   DateTime     @default(now()) @db.Timestamptz(3)
-  completedAt DateTime?    @db.Timestamptz(3)
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runDate            DateTime      @unique @db.Date
+  status             RoiRunStatus  @default(RUNNING)
+  processed          Int           @default(0)
+  credited           Int           @default(0)
+  failed             Int           @default(0)
+  errorDetail        String?       @db.VarChar(1000)
+  trigger            RoiRunTrigger @default(SCHEDULED)
+  triggeredByAdminId String?       @db.Uuid
+  triggeredByAdmin   AdminProfile? @relation("RoiRunTriggeredBy", fields: [triggeredByAdminId], references: [id], onDelete: SetNull)
+  credits            RoiCredit[]
+  startedAt          DateTime      @default(now()) @db.Timestamptz(3)
+  completedAt        DateTime?     @db.Timestamptz(3)
 
+  @@index([status, startedAt])
+  @@index([triggeredByAdminId, startedAt])
   @@map("roi_runs")
 }
 
@@ -313,33 +435,79 @@ model RoiCredit {
 }
 
 model SystemSetting {
-  key         String   @id @db.VarChar(100)
-  value       Json
-  description String?  @db.VarChar(500)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  key              String                  @id @db.VarChar(100)
+  value            Json
+  description      String?                 @db.VarChar(500)
+  version          Int                     @default(1)
+  updatedByAdminId String?                 @db.Uuid
+  updatedByAdmin   AdminProfile?           @relation("SettingUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  revisions        SystemSettingRevision[]
+  createdAt        DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime                @updatedAt @db.Timestamptz(3)
 
+  @@index([updatedByAdminId, updatedAt])
   @@map("system_settings")
 }
 
+model SystemSettingRevision {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  settingKey       String        @db.VarChar(100)
+  version          Int
+  previousValue    Json?
+  nextValue        Json
+  reason           String        @db.VarChar(500)
+  changedByAdminId String        @db.Uuid
+  setting          SystemSetting @relation(fields: [settingKey], references: [key], onDelete: Restrict)
+  changedByAdmin   AdminProfile  @relation(fields: [changedByAdminId], references: [id], onDelete: Restrict)
+  createdAt        DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@unique([settingKey, version])
+  @@index([changedByAdminId, createdAt])
+  @@map("system_setting_revisions")
+}
+
+model AdminUserNote {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String       @db.Uuid
+  authorAdminId String       @db.Uuid
+  note          String       @db.VarChar(2000)
+  user          UserProfile  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  authorAdmin   AdminProfile @relation(fields: [authorAdminId], references: [id], onDelete: Restrict)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, createdAt])
+  @@index([authorAdminId, createdAt])
+  @@map("admin_user_notes")
+}
+
 model AuditLog {
-  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  actorAdminId String?       @db.Uuid
-  targetUserId String?       @db.Uuid
-  action       String        @db.VarChar(100)
-  entityType   String        @db.VarChar(100)
-  entityId     String?       @db.Uuid
-  reason       String?       @db.VarChar(500)
-  before       Json?
-  after        Json?
-  requestId    String?       @db.VarChar(100)
-  ipAddress    String?       @db.VarChar(64)
-  userAgent    String?       @db.VarChar(500)
-  actorAdmin   AdminProfile? @relation("AuditActor", fields: [actorAdminId], references: [id], onDelete: SetNull)
-  targetUser   UserProfile?  @relation("AuditTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
-  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorType     AuditActorType @default(ADMIN)
+  actorAdminId  String?        @db.Uuid
+  targetUserId  String?        @db.Uuid
+  action        String         @db.VarChar(100)
+  entityType    String         @db.VarChar(100)
+  entityId      String?        @db.VarChar(160)
+  outcome       AuditOutcome   @default(SUCCESS)
+  errorCode     String?        @db.VarChar(100)
+  reason        String?        @db.VarChar(500)
+  before        Json?
+  after         Json?
+  metadata      Json?
+  requestId     String?        @db.VarChar(100)
+  correlationId String?        @db.VarChar(100)
+  ipAddress     String?        @db.VarChar(64)
+  userAgent     String?        @db.VarChar(500)
+  actorAdmin    AdminProfile?  @relation("AuditActor", fields: [actorAdminId], references: [id], onDelete: Restrict)
+  targetUser    UserProfile?   @relation("AuditTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
 
   @@index([actorAdminId, createdAt])
   @@index([targetUserId, createdAt])
   @@index([entityType, entityId])
+  @@index([requestId])
+  @@index([correlationId, createdAt])
+  @@index([outcome, createdAt])
   @@map("audit_logs")
 }

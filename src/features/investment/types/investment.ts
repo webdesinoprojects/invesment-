@@ -5,7 +5,7 @@ export type ActivationHistoryItem = {
   memberName: string;
   fundedByMemberId: string | null;
   source: "WALLET" | "OFFLINE" | "ADMIN";
-  status: "ACTIVE" | "COMPLETED" | "CANCELLED";
+  status: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
   activatedAt: string;
 };
 

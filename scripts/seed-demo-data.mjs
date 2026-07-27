@@ -153,7 +153,7 @@ async function seedDemoData() {
 
   const depositRequestId = await seedDeposits(root.id);
   let balance = await getLatestBalance(root.id);
-  balance = await addWalletEntry({
+  const approvedDepositCredit = await addWalletEntry({
     userId: root.id,
     balance,
     direction: "CREDIT",
@@ -164,7 +164,16 @@ async function seedDemoData() {
     key: "demo:deposit:approved",
     description: "Approved BEP-20 deposit.",
     createdAt: dateDaysAgo(65),
+    returnId: true,
   });
+  balance = approvedDepositCredit.balance;
+  await database.query(
+    `UPDATE "deposit_requests"
+     SET "status" = 'APPROVED', "approvedAmount" = "amount", "reviewSource" = 'IMPORT',
+         "creditLedgerEntryId" = $1, "reviewedAt" = $2, "updatedAt" = $2
+     WHERE "id" = $3`,
+    [approvedDepositCredit.id, dateDaysAgo(65), depositRequestId],
+  );
 
   const investments = new Map();
   for (const fixture of investmentFixtures) {
@@ -380,11 +389,11 @@ async function seedDemoData() {
 async function seedDeposits(userId) {
   const approved = await database.query(
     `INSERT INTO "deposit_requests" (
-      "userId", "amount", "transactionHash", "status", "submittedAt", "reviewedAt",
+      "userId", "amount", "transactionHash", "status", "submittedAt",
       "createdAt", "updatedAt"
-    ) VALUES ($1, 5000, $2, 'APPROVED', $3, $4, $3, $4)
+    ) VALUES ($1, 5000, $2, 'PENDING', $3, $3, $3)
     RETURNING "id"`,
-    [userId, hash("a"), dateDaysAgo(66), dateDaysAgo(65)],
+    [userId, hash("a"), dateDaysAgo(66)],
   );
   await database.query(
     `INSERT INTO "deposit_requests" (
@@ -394,9 +403,9 @@ async function seedDeposits(userId) {
   );
   await database.query(
     `INSERT INTO "deposit_requests" (
-      "userId", "amount", "transactionHash", "status", "rejectionReason",
+      "userId", "amount", "transactionHash", "status", "reviewSource", "rejectionReason",
       "submittedAt", "reviewedAt", "createdAt", "updatedAt"
-    ) VALUES ($1, 250, $2, 'REJECTED', 'Transaction could not be verified.', $3, $4, $3, $4)`,
+    ) VALUES ($1, 250, $2, 'REJECTED', 'IMPORT', 'Transaction could not be verified.', $3, $4, $3, $4)`,
     [userId, hash("c"), dateDaysAgo(12), dateDaysAgo(11)],
   );
   return approved.rows[0].id;
@@ -406,36 +415,15 @@ async function seedWithdrawals(userId, startingBalance) {
   let balance = startingBalance;
   const walletAddress = "0x2222222222222222222222222222222222222222";
   const fixtures = [
-    { key: "approved", amount: 200, status: "APPROVED", daysAgo: 11, paymentHash: hash("d"), reason: null },
+    { key: "paid", amount: 200, status: "PAID", daysAgo: 11, paymentHash: hash("d"), reason: null },
     { key: "rejected", amount: 75, status: "REJECTED", daysAgo: 6, paymentHash: null, reason: "Bank-side verification failed." },
     { key: "pending", amount: 120, status: "PENDING", daysAgo: 1, paymentHash: null, reason: null },
   ];
 
   for (const fixture of fixtures) {
+    const requestId = randomUUID();
     const submittedAt = dateDaysAgo(fixture.daysAgo);
     const reviewedAt = fixture.status === "PENDING" ? null : dateDaysAgo(fixture.daysAgo - 1);
-    const request = await database.query(
-      `INSERT INTO "withdrawal_requests" (
-        "userId", "amount", "walletAddress", "status", "paymentHash", "rejectionReason",
-        "submittedAt", "reviewedAt", "createdAt", "updatedAt"
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6,
-        $7::timestamptz, $8::timestamptz, $7::timestamptz,
-        COALESCE($8::timestamptz, $7::timestamptz)
-      )
-      RETURNING "id"`,
-      [
-        userId,
-        fixture.amount,
-        walletAddress,
-        fixture.status,
-        fixture.paymentHash,
-        fixture.reason,
-        submittedAt,
-        reviewedAt,
-      ],
-    );
-    const requestId = request.rows[0].id;
     const hold = await addWalletEntry({
       userId,
       balance,
@@ -450,13 +438,28 @@ async function seedWithdrawals(userId, startingBalance) {
       returnId: true,
     });
     balance = hold.balance;
-    await database.query(
-      'UPDATE "withdrawal_requests" SET "holdLedgerEntryId" = $1 WHERE "id" = $2',
-      [hold.id, requestId],
-    );
 
+    let settlementId = null;
+    let releaseId = null;
+    if (fixture.status === "PAID") {
+      const settlement = await addWalletEntry({
+        userId,
+        balance,
+        direction: "SETTLE",
+        category: "WITHDRAWAL",
+        amount: fixture.amount,
+        referenceType: "WithdrawalRequest",
+        referenceId: requestId,
+        key: `demo:withdrawal:${fixture.key}:settlement`,
+        description: "Paid withdrawal settlement.",
+        createdAt: reviewedAt,
+        returnId: true,
+      });
+      settlementId = settlement.id;
+      balance = settlement.balance;
+    }
     if (fixture.status === "REJECTED") {
-      balance = await addWalletEntry({
+      const release = await addWalletEntry({
         userId,
         balance,
         direction: "RELEASE",
@@ -467,8 +470,40 @@ async function seedWithdrawals(userId, startingBalance) {
         key: `demo:withdrawal:${fixture.key}:release`,
         description: "Rejected withdrawal hold released.",
         createdAt: reviewedAt,
+        returnId: true,
       });
+      releaseId = release.id;
+      balance = release.balance;
     }
+
+    await database.query(
+      `INSERT INTO "withdrawal_requests" (
+        "id", "userId", "amount", "feeAmount", "netAmount", "walletAddress", "status",
+        "reviewSource", "paymentHash", "rejectionReason", "holdLedgerEntryId",
+        "settlementLedgerEntryId", "releaseLedgerEntryId", "submittedAt", "reviewedAt",
+        "paidAt", "createdAt", "updatedAt"
+      ) VALUES (
+        $1, $2, $3, 0, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+        $12::timestamptz, $13::timestamptz, $14::timestamptz, $12::timestamptz,
+        COALESCE($13::timestamptz, $12::timestamptz)
+      )`,
+      [
+        requestId,
+        userId,
+        fixture.amount,
+        walletAddress,
+        fixture.status,
+        fixture.status === "PENDING" ? null : "IMPORT",
+        fixture.paymentHash,
+        fixture.reason,
+        hold.id,
+        settlementId,
+        releaseId,
+        submittedAt,
+        reviewedAt,
+        fixture.status === "PAID" ? reviewedAt : null,
+      ],
+    );
   }
   return balance;
 }
@@ -523,7 +558,8 @@ async function addWalletEntry({
   returnId = false,
 }) {
   const increasesBalance = direction === "CREDIT" || direction === "RELEASE";
-  const nextBalance = increasesBalance ? balance + amount : balance - amount;
+  const decreasesBalance = direction === "DEBIT" || direction === "DEDUCTION" || direction === "HOLD";
+  const nextBalance = increasesBalance ? balance + amount : decreasesBalance ? balance - amount : balance;
   if (nextBalance < 0) throw new Error(`Demo ledger balance became negative for ${key}.`);
 
   const result = await database.query(
