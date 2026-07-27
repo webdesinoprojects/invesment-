@@ -63,6 +63,14 @@ npm run seed:test-sponsor
 
 This creates active member `NP900001`, a 1,000 USDT test ledger balance, an active referral link, and a fake deposit address. Never send funds to the fake address. Remove the three `TEST_SPONSOR_*` values after seeding and do not use this script in production.
 
+To populate every user-panel table and dashboard metric with display data, run once:
+
+```powershell
+npm run seed:demo
+```
+
+The demo seed is transactional and idempotent. It adds a 13-member referral tree, active and pending investments, every income type, wallet activity, and deposit and withdrawal records.
+
 ## 5. Start and test
 
 ```powershell
