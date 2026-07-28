@@ -1,37 +1,13 @@
 import "server-only";
 
-import type { AdminRole } from "@/generated/prisma/client";
+import {
+  can,
+  type AdminPermission,
+} from "@/features/admin/permissions";
 import { requireAdmin } from "@/lib/admin/session";
 
-export type AdminPermission =
-  | "admin.view"
-  | "members.manage"
-  | "deposits.review"
-  | "withdrawals.process"
-  | "investments.manage"
-  | "investments.manual"
-  | "roi.run"
-  | "wallet.adjust"
-  | "settings.manage"
-  | "administrators.manage"
-  | "audit.view";
-
-const permissions: Record<AdminRole, ReadonlySet<AdminPermission>> = {
-  SUPER_ADMIN: new Set([
-    "admin.view", "members.manage", "deposits.review", "withdrawals.process",
-    "investments.manage", "investments.manual", "roi.run", "wallet.adjust",
-    "settings.manage", "administrators.manage", "audit.view",
-  ]),
-  OPERATOR: new Set([
-    "admin.view", "members.manage", "deposits.review", "withdrawals.process",
-    "investments.manage", "audit.view",
-  ]),
-  VIEWER: new Set(["admin.view"]),
-};
-
-export function can(role: AdminRole, permission: AdminPermission): boolean {
-  return permissions[role].has(permission);
-}
+export { can };
+export type { AdminPermission };
 
 export async function requireAdminPermission(permission: AdminPermission) {
   const admin = await requireAdmin();

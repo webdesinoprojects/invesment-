@@ -11,7 +11,16 @@ export async function transitionInvestmentAction(_state: AdminActionResult, form
   const admin = await requireAdminPermission("investments.manage");
   try {
     const result = await transitionInvestment({ ...parsed.data, adminId: admin.adminId });
-    if (!result.ok) return { ok: false, code: result.code, message: result.code === "NOT_FOUND" ? "Investment not found." : "That lifecycle transition is not allowed." };
+    if (!result.ok) return {
+      ok: false,
+      code: result.code,
+      message:
+        result.code === "NOT_FOUND"
+          ? "Investment not found."
+          : result.code === "CONFLICT"
+            ? "The investment changed while this action was running. Refresh and try again."
+            : "That lifecycle transition is not allowed.",
+    };
     revalidatePath("/admin");
     return { ok: true, data: undefined, message: "Investment status updated." };
   } catch {

@@ -20,6 +20,7 @@ function hasPrismaCode(error: unknown, code: string): boolean {
 export async function activateInvestment({
   payerUserId,
   targetMemberId,
+  targetUserId,
   amount,
   requestToken,
   settings,
@@ -27,13 +28,17 @@ export async function activateInvestment({
   reason,
 }: {
   payerUserId: string;
-  targetMemberId: string;
+  targetMemberId?: string;
+  targetUserId?: string;
   amount: string;
   requestToken: string;
   settings: InvestmentSettings;
   adminId?: string;
   reason?: string;
 }): Promise<ActivateInvestmentResult> {
+  if ((!targetMemberId && !targetUserId) || (targetMemberId && targetUserId)) {
+    throw new Error("Exactly one investment target identifier is required.");
+  }
   const db = getPrisma();
   const idempotencyKey = `investment-activation:${requestToken}`;
 
@@ -43,7 +48,8 @@ export async function activateInvestment({
         async (tx) =>
           activateInTransaction(tx, {
             payerUserId,
-            targetMemberId,
+            ...(targetMemberId ? { targetMemberId } : {}),
+            ...(targetUserId ? { targetUserId } : {}),
             amount,
             idempotencyKey,
             settings,
@@ -66,7 +72,8 @@ async function activateInTransaction(
   tx: TransactionClient,
   input: {
     payerUserId: string;
-    targetMemberId: string;
+    targetMemberId?: string;
+    targetUserId?: string;
     amount: string;
     idempotencyKey: string;
     settings: InvestmentSettings;
@@ -82,8 +89,10 @@ async function activateInTransaction(
 
   const [target, payerLedger] = await Promise.all([
     tx.userProfile.findUnique({
-      where: { memberId: input.targetMemberId },
-      select: { id: true, status: true },
+      where: input.targetUserId
+        ? { id: input.targetUserId }
+        : { memberId: input.targetMemberId as string },
+      select: { id: true, memberId: true, status: true },
     }),
     tx.walletLedgerEntry.findFirst({
       where: { userId: input.payerUserId },
@@ -124,7 +133,7 @@ async function activateInTransaction(
       referenceType: "Investment",
       referenceId: investment.id,
       idempotencyKey: input.idempotencyKey,
-      description: `Wallet-funded activation for ${input.targetMemberId}.`,
+      description: `Wallet-funded activation for ${target.memberId}.`,
       createdByAdminId: input.adminId ?? null,
     },
   });

@@ -1,6 +1,6 @@
 import "server-only";
-import { getPrisma } from "@/lib/db/prisma";
 import type { TransitionInvestmentInput } from "../schemas/transition-investment";
+import { runSerializable } from "../../shared/transaction";
 
 const allowed: Record<string, readonly string[]> = {
   ACTIVE: ["PAUSED", "CANCELLED"],
@@ -10,13 +10,12 @@ const allowed: Record<string, readonly string[]> = {
 };
 
 export async function transitionInvestment(input: TransitionInvestmentInput & { adminId: string }) {
-  const prisma = getPrisma();
-  return prisma.$transaction(async (tx) => {
+  return runSerializable(async (tx) => {
     const investment = await tx.investment.findUnique({ where: { id: input.id }, select: { id: true, userId: true, status: true } });
     if (!investment) return { ok: false as const, code: "NOT_FOUND" };
     if (!allowed[investment.status]?.includes(input.status)) return { ok: false as const, code: "INVALID_TRANSITION" };
-    await tx.investment.update({
-      where: { id: investment.id },
+    const updated = await tx.investment.updateMany({
+      where: { id: investment.id, status: investment.status },
       data: {
         status: input.status, statusChangedById: input.adminId,
         statusReason: input.status === "ACTIVE" ? null : input.reason,
@@ -24,6 +23,7 @@ export async function transitionInvestment(input: TransitionInvestmentInput & { 
         cancelledAt: input.status === "CANCELLED" ? new Date() : null,
       },
     });
+    if (updated.count !== 1) return { ok: false as const, code: "CONFLICT" };
     await tx.auditLog.create({
       data: { actorAdminId: input.adminId, targetUserId: investment.userId, action: "INVESTMENT_STATUS_UPDATE", entityType: "Investment", entityId: investment.id, before: { status: investment.status }, after: { status: input.status }, reason: input.reason || null },
     });

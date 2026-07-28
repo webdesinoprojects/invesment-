@@ -3,24 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdminPermission } from "@/server/permissions/admin-permissions";
+import { configurationSchemas } from "@/features/settings/schemas/configuration";
 import { runSerializable } from "../shared/transaction";
 import type { AdminActionResult } from "../shared/action-result";
 import { Prisma } from "@/generated/prisma/client";
 
-const money=z.string().regex(/^(?:0|[1-9]\d{0,13})(?:\.\d{1,6})?$/);
-const configs={
- investment_configuration:z.object({minimumAmount:money,monthlyRoiPercent:money,durationMonths:z.number().int().min(1).max(120),directCommissionPercent:money,levelCommissionPercent:money,maxLevelDepth:z.number().int().min(1).max(5)}).strict(),
- withdrawal_configuration:z.object({minimumAmount:money,allowedDays:z.array(z.number().int().min(1).max(31)).min(1)}).strict(),
- deposit_configuration:z.object({walletAddress:z.string().regex(/^0x[a-fA-F0-9]{40}$/),network:z.string().min(2).max(16),minimumAmount:money}).strict(),
-}as const;
 const inputSchema=z.object({key:z.enum(["investment_configuration","withdrawal_configuration","deposit_configuration"]),value:z.string().min(2).max(4000),version:z.coerce.number().int().positive(),reason:z.string().trim().min(3).max(500)});
 
 export async function updateSettingAction(_state:AdminActionResult,formData:FormData):Promise<AdminActionResult>{
  const parsed=inputSchema.safeParse(Object.fromEntries(formData));
  if(!parsed.success)return{ok:false,code:"VALIDATION",message:"Check the setting value, version and reason.",fieldErrors:parsed.error.flatten().fieldErrors};
  let json:unknown;try{json=JSON.parse(parsed.data.value)}catch{return{ok:false,code:"INVALID_JSON",message:"The setting value is not valid JSON."};}
- const value=configs[parsed.data.key].safeParse(json);
- if(!value.success)return{ok:false,code:"INVALID_SETTING",message:"The setting does not match its supported schema."};
+ const value=configurationSchemas[parsed.data.key].safeParse(json);
+ if(!value.success)return{ok:false,code:"INVALID_SETTING",message:value.error.issues[0]?.message??"The setting does not match its supported schema."};
  const admin=await requireAdminPermission("settings.manage");
  try{
   const result=await runSerializable(async tx=>{
