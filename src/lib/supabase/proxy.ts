@@ -12,7 +12,6 @@ const protectedPrefixes = [
   "/assets",
   "/profile",
   "/security",
-  "/admin",
 ] as const;
 
 function isProtectedPath(pathname: string): boolean {

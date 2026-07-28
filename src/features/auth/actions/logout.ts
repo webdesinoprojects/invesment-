@@ -11,5 +11,5 @@ export async function logoutAction(): Promise<never> {
     await supabase.auth.signOut();
   }
 
-  redirect("/login");
+  redirect("/");
 }

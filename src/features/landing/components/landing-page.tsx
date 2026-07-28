@@ -493,7 +493,7 @@ export default function LandingPage() {
                 <li key={item}><span><Check size={14} /></span>{item}</li>
               ))}
             </ul>
-            <Link className="button button-gold" href="/register">Invest Now <ArrowRight size={18} /></Link>
+            <Link className="button button-gold" href="/login">Invest Now <ArrowRight size={18} /></Link>
           </Reveal>
         </div>
       </section>
