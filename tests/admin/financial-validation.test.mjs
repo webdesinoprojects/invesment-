@@ -11,6 +11,11 @@ import {
   investmentConfigurationSchema,
   withdrawalConfigurationSchema,
 } from "../../src/features/settings/schemas/configuration.ts";
+import {
+  ADMIN_LOGIN_BLOCK_MS,
+  ADMIN_LOGIN_WINDOW_MS,
+  evaluateLoginRateLimit,
+} from "../../src/features/admin/auth/login-rate-limit-policy.ts";
 
 const id = "00000000-0000-4000-8000-000000000000";
 
@@ -19,11 +24,11 @@ test("deposit decision rejects unknown values", () => {
 });
 test("deposit rejection requires a reason", () => {
   assert.equal(reviewDepositSchema.safeParse({ id, decision: "REJECT", reason: "" }).success, false);
-  assert.equal(reviewDepositSchema.safeParse({ id, decision: "REJECT", reason: "Hash does not match" }).success, true);
+  assert.equal(reviewDepositSchema.safeParse({ id, decision: "REJECT", reason: "Hash does not match", confirmed: "true" }).success, true);
 });
 test("withdrawal payment requires a normalized BSC hash", () => {
   assert.equal(transitionWithdrawalSchema.safeParse({ id, transition: "PAY", paymentHash: "0x123", reason: "" }).success, false);
-  const parsed = transitionWithdrawalSchema.safeParse({ id, transition: "PAY", paymentHash: `0x${"AB".repeat(32)}`, reason: "Paid externally" });
+  const parsed = transitionWithdrawalSchema.safeParse({ id, transition: "PAY", paymentHash: `0x${"AB".repeat(32)}`, reason: "Paid externally", confirmed: "true" });
   assert.equal(parsed.success, true);
   if (parsed.success) assert.equal(parsed.data.paymentHash, `0x${"ab".repeat(32)}`);
 });
@@ -34,7 +39,7 @@ test("withdrawal reject and failure require reasons", () => {
 test("blocking and exceptional investment states require reasons", () => {
   assert.equal(changeMemberStatusSchema.safeParse({ id, status: "BLOCKED", reason: "" }).success, false);
   assert.equal(transitionInvestmentSchema.safeParse({ id, status: "CANCELLED", reason: "" }).success, false);
-  assert.equal(transitionInvestmentSchema.safeParse({ id, status: "PAUSED", reason: "Compliance review" }).success, true);
+  assert.equal(transitionInvestmentSchema.safeParse({ id, status: "PAUSED", reason: "Compliance review", confirmed: "true" }).success, true);
 });
 
 test("shared configuration schemas reject invalid financial settings", () => {
@@ -78,9 +83,50 @@ test("manual activation requires an exact user UUID and explicit confirmation", 
 });
 
 test("audit access and sidebar permissions use the central role matrix", () => {
-  assert.equal(can("SUPER_ADMIN", "audit.view"), true);
-  assert.equal(can("OPERATOR", "audit.view"), false);
-  assert.equal(can("VIEWER", "audit.view"), false);
-  assert.equal(can("OPERATOR", "deposits.review"), true);
-  assert.equal(can("VIEWER", "deposits.review"), false);
+  const sensitivePermissions = [
+    "members.sensitive",
+    "investments.manual",
+    "wallet.adjust",
+    "settings.manage",
+    "administrators.manage",
+    "audit.view",
+  ];
+  for (const permission of sensitivePermissions) {
+    assert.equal(can("SUPER_ADMIN", permission), true, `SUPER_ADMIN must have ${permission}`);
+    assert.equal(can("OPERATOR", permission), false, `OPERATOR must not have ${permission}`);
+    assert.equal(can("VIEWER", permission), false, `VIEWER must not have ${permission}`);
+  }
+
+  const operationalPermissions = [
+    "members.manage",
+    "deposits.review",
+    "withdrawals.process",
+    "investments.manage",
+    "reports.export",
+  ];
+  for (const permission of operationalPermissions) {
+    assert.equal(can("SUPER_ADMIN", permission), true, `SUPER_ADMIN must have ${permission}`);
+    assert.equal(can("OPERATOR", permission), true, `OPERATOR must have ${permission}`);
+    assert.equal(can("VIEWER", permission), false, `VIEWER must not have ${permission}`);
+  }
+
+  for (const role of ["SUPER_ADMIN", "OPERATOR", "VIEWER"]) {
+    assert.equal(can(role, "admin.view"), true, `${role} must be able to view admin`);
+    assert.equal(can(role, "members.view"), true, `${role} must be able to view members`);
+    assert.equal(can(role, "reports.view"), true, `${role} must be able to view reports`);
+  }
+});
+
+test("admin login limiter locks and recovers after the shared window", () => {
+  const now = new Date("2026-07-28T06:30:00.000Z");
+  assert.equal(evaluateLoginRateLimit({
+    failureCount: 5,
+    windowStartedAt: new Date(now.getTime() - 1_000),
+    blockedUntil: new Date(now.getTime() + ADMIN_LOGIN_BLOCK_MS),
+  }, now).allowed, false);
+  assert.equal(evaluateLoginRateLimit({
+    failureCount: 5,
+    windowStartedAt: new Date(now.getTime() - ADMIN_LOGIN_WINDOW_MS - 1),
+    blockedUntil: new Date(now.getTime() - 1),
+  }, now).allowed, true);
 });

@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 
+import { AdminActionDialog } from "@/components/admin/admin-action-dialog";
 import {
   manualActivationAction,
   searchManualActivationMembersAction,
@@ -114,12 +115,7 @@ export function ManualActivationForm() {
       ) : null}
 
       {selected ? (
-        <form
-          action={action}
-          className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
-        >
-          <input type="hidden" name="requestToken" value={token} />
-          <input type="hidden" name="userId" value={selected.userId} />
+        <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             <p>
               <span className="text-slate-500">Resolved member</span>
@@ -142,41 +138,52 @@ export function ManualActivationForm() {
               <strong>{amount || "Enter below"} USDT</strong>
             </p>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <input
-              name="amount"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              required
-              inputMode="decimal"
-              placeholder="Amount USDT"
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            />
+          <input
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            required
+            inputMode="decimal"
+            placeholder="Amount USDT"
+            aria-label="Activation amount"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+          />
+          <AdminActionDialog
+            triggerLabel="Review activation"
+            title="Confirm manual investment activation"
+            description={`${selected.fullName} · ${selected.memberId} · wallet ${selected.walletBalance} USDT · activation ${amount || "not entered"} USDT. Confirmation debits this wallet and creates the investment and eligible commissions.`}
+          >
+            <form action={action} className="space-y-3">
+              <input type="hidden" name="requestToken" value={token} />
+              <input type="hidden" name="userId" value={selected.userId} />
+              <input type="hidden" name="amount" value={amount} />
+              <p className="break-all text-xs text-slate-500">
+                Internal user ID: {selected.userId}
+              </p>
             <input
               name="reason"
               required
               placeholder="Activation reason"
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
             />
-          </div>
-          <label className="flex items-start gap-2 text-xs text-slate-600">
-            <input
-              type="checkbox"
-              name="confirmed"
-              value="true"
-              required
-              className="mt-0.5"
-            />
-            I confirm the exact member, wallet balance and activation amount shown above. This
-            will debit the member wallet and create an investment.
-          </label>
-          <button
-            disabled={pending}
-            className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white"
-          >
-            {pending ? "Activating..." : "Confirm activation"}
-          </button>
-        </form>
+              <label className="flex items-start gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  name="confirmed"
+                  value="true"
+                  required
+                  className="mt-0.5"
+                />
+                I confirm the exact member, wallet balance and activation amount shown above.
+              </label>
+              <button
+                disabled={pending}
+                className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white"
+              >
+                {pending ? "Activating..." : "Confirm activation"}
+              </button>
+            </form>
+          </AdminActionDialog>
+        </div>
       ) : null}
 
       {state.message ? (

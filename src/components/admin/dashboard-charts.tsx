@@ -1,6 +1,6 @@
 "use client";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-type Point = { label: string; members: number; deposits: number; withdrawals: number };
+type Point = { label: string; members: number; deposits: string; withdrawals: string };
 export function DashboardCharts({ data, statuses }: { data: Point[]; statuses: { name: string; value: number }[] }) {
   const colors = ["#10b981","#f59e0b","#ef4444"] as const;
   return (

@@ -192,6 +192,17 @@ model AdminProfile {
   @@map("admin_profiles")
 }
 
+model AdminLoginThrottle {
+  key             String    @id @db.VarChar(64)
+  failureCount    Int       @default(0)
+  windowStartedAt DateTime  @db.Timestamptz(3)
+  blockedUntil    DateTime? @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([blockedUntil])
+  @@map("admin_login_throttles")
+}
+
 model ReferralLink {
   id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId    String      @unique @db.Uuid

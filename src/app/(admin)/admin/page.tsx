@@ -42,7 +42,12 @@ export default async function AdminDashboard() {
         prisma.depositRequest.aggregate({where:{status:"APPROVED",reviewedAt:{gte:m.start,lt:m.end}},_sum:{approvedAmount:true}}),
         prisma.withdrawalRequest.aggregate({where:{status:"PAID",paidAt:{gte:m.start,lt:m.end}},_sum:{netAmount:true}}),
       ]);
-      return {label:m.label,members,deposits:Number(dep._sum.approvedAmount??0),withdrawals:Number(wit._sum.netAmount??0)};
+      return {
+        label: m.label,
+        members,
+        deposits: (dep._sum.approvedAmount ?? new Prisma.Decimal(0)).toFixed(6),
+        withdrawals: (wit._sum.netAmount ?? new Prisma.Decimal(0)).toFixed(6),
+      };
     })),
   ]);
   const income = Object.fromEntries(incomes.map((row) => [row.type, row._sum.amount ?? new Prisma.Decimal(0)]));
