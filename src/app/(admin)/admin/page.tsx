@@ -2,13 +2,16 @@ import Link from "next/link";
 import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, Clock3, CircleDollarSign, Network, ShieldAlert, TrendingUp, UserCheck, Users, WalletCards } from "lucide-react";
 import { DashboardCharts } from "@/components/admin/dashboard-charts";
 import { getPrisma } from "@/lib/db/prisma";
+import { formatDecimalCurrency } from "@/features/admin/shared/format-decimal";
+import { Prisma } from "@/generated/prisma/client";
+import { getIndiaBusinessDayBounds } from "@/lib/date/business-day";
 
-const money = (value: unknown) => `$${Number(value ?? 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+const money = (value: { toString(): string } | string | null | undefined) => formatDecimalCurrency(value);
 const date = (value: Date) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(value);
 
 export default async function AdminDashboard() {
   const prisma = getPrisma();
-  const now = new Date(); const today = new Date(now); today.setHours(0,0,0,0);
+  const now = new Date(); const today = getIndiaBusinessDayBounds(now);
   const months = Array.from({ length: 6 }, (_, index) => {
     const start = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
     const end = new Date(now.getFullYear(), now.getMonth() - 4 + index, 1);
@@ -20,7 +23,7 @@ export default async function AdminDashboard() {
     investments, approvedDeposits, paidWithdrawals, incomes, registrations, deposits, withdrawals, audits, walletBalances,
     monthly,
   ] = await Promise.all([
-    prisma.userProfile.count(), prisma.userProfile.count({where:{status:"ACTIVE"}}), prisma.userProfile.count({where:{status:"PENDING"}}), prisma.userProfile.count({where:{status:"BLOCKED"}}), prisma.userProfile.count({where:{createdAt:{gte:today}}}),
+    prisma.userProfile.count(), prisma.userProfile.count({where:{status:"ACTIVE"}}), prisma.userProfile.count({where:{status:"PENDING"}}), prisma.userProfile.count({where:{status:"BLOCKED"}}), prisma.userProfile.count({where:{createdAt:{gte:today.start,lt:today.end}}}),
     prisma.depositRequest.aggregate({where:{status:"PENDING"},_count:true,_sum:{amount:true}}),
     prisma.withdrawalRequest.aggregate({where:{status:"PENDING"},_count:true,_sum:{amount:true}}),
     prisma.withdrawalRequest.count({where:{status:"PROCESSING"}}), prisma.withdrawalRequest.count({where:{status:"FAILED"}}), prisma.roiRun.count({where:{status:"FAILED"}}),
@@ -42,12 +45,12 @@ export default async function AdminDashboard() {
       return {label:m.label,members,deposits:Number(dep._sum.approvedAmount??0),withdrawals:Number(wit._sum.netAmount??0)};
     })),
   ]);
-  const income = Object.fromEntries(incomes.map((row) => [row.type, Number(row._sum.amount ?? 0)]));
-  const totalWalletBalance = walletBalances.reduce((sum, entry) => sum + Number(entry.balanceAfter), 0);
+  const income = Object.fromEntries(incomes.map((row) => [row.type, row._sum.amount ?? new Prisma.Decimal(0)]));
+  const totalWalletBalance = walletBalances.reduce((sum, entry) => sum.plus(entry.balanceAfter), new Prisma.Decimal(0));
   const cards = [
     ["Total members",totalMembers,Users,"text-blue-600 bg-blue-50"],["Active members",activeMembers,UserCheck,"text-emerald-600 bg-emerald-50"],["Pending members",pendingMembers,Clock3,"text-amber-600 bg-amber-50"],["Blocked members",blockedMembers,ShieldAlert,"text-red-600 bg-red-50"],
     ["New today",newToday,TrendingUp,"text-violet-600 bg-violet-50"],["Wallet balance",money(totalWalletBalance),WalletCards,"text-indigo-600 bg-indigo-50"],["Active investment",money(investments._sum.amount),CircleDollarSign,"text-emerald-600 bg-emerald-50"],["Approved deposits",money(approvedDeposits._sum.approvedAmount),ArrowDownToLine,"text-cyan-600 bg-cyan-50"],["Pending deposits",money(pendingDeposits._sum.amount),Clock3,"text-amber-600 bg-amber-50"],
-    ["Paid withdrawals",money(paidWithdrawals._sum.netAmount),ArrowUpFromLine,"text-slate-700 bg-slate-100"],["Pending withdrawals",money(pendingWithdrawals._sum.amount),Clock3,"text-orange-600 bg-orange-50"],["ROI distributed",money(income.DAILY_ROI),TrendingUp,"text-lime-700 bg-lime-50"],["Referral income",money((income.DIRECT_REFERRAL??0)+(income.LEVEL_INCOME??0)),Network,"text-fuchsia-600 bg-fuchsia-50"],
+    ["Paid withdrawals",money(paidWithdrawals._sum.netAmount),ArrowUpFromLine,"text-slate-700 bg-slate-100"],["Pending withdrawals",money(pendingWithdrawals._sum.amount),Clock3,"text-orange-600 bg-orange-50"],["ROI distributed",money(income.DAILY_ROI),TrendingUp,"text-lime-700 bg-lime-50"],["Referral income",money((income.DIRECT_REFERRAL??new Prisma.Decimal(0)).plus(income.LEVEL_INCOME??new Prisma.Decimal(0))),Network,"text-fuchsia-600 bg-fuchsia-50"],
   ] as const;
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">

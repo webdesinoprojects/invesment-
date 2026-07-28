@@ -23,12 +23,16 @@ export async function activateInvestment({
   amount,
   requestToken,
   settings,
+  adminId,
+  reason,
 }: {
   payerUserId: string;
   targetMemberId: string;
   amount: string;
   requestToken: string;
   settings: InvestmentSettings;
+  adminId?: string;
+  reason?: string;
 }): Promise<ActivateInvestmentResult> {
   const db = getPrisma();
   const idempotencyKey = `investment-activation:${requestToken}`;
@@ -43,6 +47,8 @@ export async function activateInvestment({
             amount,
             idempotencyKey,
             settings,
+            ...(adminId ? { adminId } : {}),
+            ...(reason ? { reason } : {}),
           }),
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
@@ -64,6 +70,8 @@ async function activateInTransaction(
     amount: string;
     idempotencyKey: string;
     settings: InvestmentSettings;
+    adminId?: string;
+    reason?: string;
   },
 ): Promise<ActivateInvestmentResult> {
   const duplicate = await tx.walletLedgerEntry.findUnique({
@@ -101,6 +109,7 @@ async function activateInTransaction(
       monthlyRoiPercent: input.settings.monthlyRoiPercent,
       durationMonths: input.settings.durationMonths,
       source: "WALLET",
+      activatedById: input.adminId ?? null,
     },
     select: { id: true },
   });
@@ -116,6 +125,7 @@ async function activateInTransaction(
       referenceId: investment.id,
       idempotencyKey: input.idempotencyKey,
       description: `Wallet-funded activation for ${input.targetMemberId}.`,
+      createdByAdminId: input.adminId ?? null,
     },
   });
 
@@ -136,6 +146,20 @@ async function activateInTransaction(
     baseAmount: investmentAmount,
     settings: input.settings,
   });
+
+  if (input.adminId) {
+    await tx.auditLog.create({
+      data: {
+        actorAdminId: input.adminId,
+        targetUserId: target.id,
+        action: "MANUAL_INVESTMENT_ACTIVATION",
+        entityType: "Investment",
+        entityId: investment.id,
+        reason: input.reason ?? "Manual activation",
+        after: { amount: investmentAmount.toFixed(6), source: "WALLET" },
+      },
+    });
+  }
 
   return { ok: true, investmentId: investment.id };
 }

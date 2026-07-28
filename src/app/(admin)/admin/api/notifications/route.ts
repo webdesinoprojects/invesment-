@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin/session";
 import { getPrisma } from "@/lib/db/prisma";
+import { formatDecimalCurrency } from "@/features/admin/shared/format-decimal";
+import { adminNotificationResponseSchema } from "@/features/admin/notifications/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -24,15 +26,16 @@ export async function GET() {
   ]);
   const items = [
     ...members.map((x) => ({ id: `member-${x.id}`, type: "MEMBER", title: "New member awaiting approval", detail: `${x.fullName} · ${x.memberId}`, href: "/admin/members/pending", createdAt: x.createdAt.toISOString() })),
-    ...deposits.map((x) => ({ id: `deposit-${x.id}`, type: "DEPOSIT", title: "New deposit request", detail: `${x.user.fullName} · $${Number(x.amount).toLocaleString()}`, href: "/admin/deposits/pending", createdAt: x.submittedAt.toISOString() })),
-    ...withdrawals.map((x) => ({ id: `withdrawal-${x.id}`, type: "WITHDRAWAL", title: `${x.status === "PROCESSING" ? "Processing" : "New"} withdrawal request`, detail: `${x.user.fullName} · $${Number(x.amount).toLocaleString()}`, href: x.status === "PROCESSING" ? "/admin/withdrawals/processing" : "/admin/withdrawals/pending", createdAt: x.submittedAt.toISOString() })),
+    ...deposits.map((x) => ({ id: `deposit-${x.id}`, type: "DEPOSIT", title: "New deposit request", detail: `${x.user.fullName} · ${formatDecimalCurrency(x.amount)}`, href: "/admin/deposits/pending", createdAt: x.submittedAt.toISOString() })),
+    ...withdrawals.map((x) => ({ id: `withdrawal-${x.id}`, type: "WITHDRAWAL", title: `${x.status === "PROCESSING" ? "Processing" : "New"} withdrawal request`, detail: `${x.user.fullName} · ${formatDecimalCurrency(x.amount)}`, href: x.status === "PROCESSING" ? "/admin/withdrawals/processing" : "/admin/withdrawals/pending", createdAt: x.submittedAt.toISOString() })),
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 15);
   const count = await Promise.all([
     prisma.userProfile.count({ where: { status: "PENDING" } }),
     prisma.depositRequest.count({ where: { status: "PENDING" } }),
     prisma.withdrawalRequest.count({ where: { status: { in: ["PENDING", "PROCESSING"] } } }),
   ]);
-  return NextResponse.json({ count: count.reduce((sum, value) => sum + value, 0), items }, {
+  const response=adminNotificationResponseSchema.parse({ count: count.reduce((sum, value) => sum + value, 0), items });
+  return NextResponse.json(response, {
     headers: { "Cache-Control": "no-store" },
   });
 }

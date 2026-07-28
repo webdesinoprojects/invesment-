@@ -12,9 +12,11 @@ const protectedPrefixes = [
   "/assets",
   "/profile",
   "/security",
+  "/admin",
 ] as const;
 
 function isProtectedPath(pathname: string): boolean {
+  if (pathname === "/admin/login") return false;
   return protectedPrefixes.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
@@ -52,7 +54,7 @@ export async function updateSession(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims && isProtectedPath(request.nextUrl.pathname)) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL(request.nextUrl.pathname.startsWith("/admin") ? "/admin/login" : "/login", request.url);
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
   }

@@ -13,10 +13,10 @@ function hasPrismaCode(error: unknown, code: string): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === code;
 }
 
-export async function runDailyRoi(now = new Date()): Promise<RoiRunResult> {
+export async function runDailyRoi(now = new Date(), adminId?: string): Promise<RoiRunResult> {
   const dateKey = getIndiaDateKey(now);
   const creditDate = getIndiaDateValue(now);
-  const claim = await claimRun(creditDate, now);
+  const claim = await claimRun(creditDate, now, adminId);
 
   if (!claim.acquired) {
     return resultFromRun(claim.run, dateKey, claim.run.status === "COMPLETED");
@@ -112,11 +112,18 @@ async function markClaimFailed(claimedRun: RoiRun): Promise<void> {
 async function claimRun(
   runDate: Date,
   now: Date,
+  adminId?: string,
 ): Promise<{ acquired: boolean; run: RoiRun }> {
   const db = getPrisma();
 
   try {
-    const run = await db.roiRun.create({ data: { runDate } });
+    const run = await db.roiRun.create({
+      data: {
+        runDate,
+        trigger: adminId ? "MANUAL" : "SCHEDULED",
+        triggeredByAdminId: adminId ?? null,
+      },
+    });
     return { acquired: true, run };
   } catch (error) {
     if (!hasPrismaCode(error, "P2002")) throw error;
@@ -143,6 +150,8 @@ async function claimRun(
       errorDetail: null,
       startedAt: now,
       completedAt: null,
+      trigger: adminId ? "RETRY" : existing.trigger,
+      triggeredByAdminId: adminId ?? existing.triggeredByAdminId,
     },
   });
   if (claimed.count === 0) {
