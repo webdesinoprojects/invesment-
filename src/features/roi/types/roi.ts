@@ -10,5 +10,6 @@ export type RoiRunResult = {
   processed: number;
   credited: number;
   failed: number;
+  executed: boolean;
   alreadyCompleted: boolean;
 };

@@ -4,6 +4,7 @@ export const changeMemberStatusSchema = z.object({
   id: z.uuid(),
   status: z.enum(["ACTIVE", "BLOCKED"]),
   reason: z.string().trim().max(500).default(""),
+  confirmed: z.literal("true"),
 }).superRefine((value, context) => {
   if (value.status === "BLOCKED" && value.reason.length < 3) {
     context.addIssue({ code: "custom", path: ["reason"], message: "A blocking reason is required." });

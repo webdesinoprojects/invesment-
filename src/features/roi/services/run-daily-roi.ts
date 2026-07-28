@@ -13,17 +13,26 @@ function hasPrismaCode(error: unknown, code: string): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === code;
 }
 
-export async function runDailyRoi(now = new Date(), adminId?: string): Promise<RoiRunResult> {
+export async function runDailyRoi(
+  now = new Date(),
+  adminId?: string,
+  options?: { credit?: typeof creditDailyRoi },
+): Promise<RoiRunResult> {
   const dateKey = getIndiaDateKey(now);
   const creditDate = getIndiaDateValue(now);
   const claim = await claimRun(creditDate, now, adminId);
 
   if (!claim.acquired) {
-    return resultFromRun(claim.run, dateKey, claim.run.status === "COMPLETED");
+    return resultFromRun(claim.run, dateKey, false, claim.run.status === "COMPLETED");
   }
 
   try {
-    return await processClaimedRun(claim.run, creditDate, dateKey);
+    return await processClaimedRun(
+      claim.run,
+      creditDate,
+      dateKey,
+      options?.credit ?? creditDailyRoi,
+    );
   } catch {
     await markClaimFailed(claim.run).catch(() => undefined);
     throw new Error("Daily ROI processing failed.");
@@ -34,6 +43,7 @@ async function processClaimedRun(
   claimedRun: RoiRun,
   creditDate: Date,
   dateKey: string,
+  credit: typeof creditDailyRoi,
 ): Promise<RoiRunResult> {
   const db = getPrisma();
   const investments = await db.investment.findMany({
@@ -55,7 +65,7 @@ async function processClaimedRun(
     await Promise.all(batch.map(async (userInvestments) => {
       for (const investment of userInvestments) {
         try {
-          await creditDailyRoi({
+          await credit({
             runId: claimedRun.id,
             investmentId: investment.id,
             creditDate,
@@ -90,7 +100,7 @@ async function processClaimedRun(
   });
 
   const run = await db.roiRun.findUniqueOrThrow({ where: { id: claimedRun.id } });
-  return resultFromRun(run, dateKey, run.status === "COMPLETED" && run.startedAt > claimedRun.startedAt);
+  return resultFromRun(run, dateKey, true, false);
 }
 
 async function markClaimFailed(claimedRun: RoiRun): Promise<void> {
@@ -167,13 +177,19 @@ async function claimRun(
   };
 }
 
-function resultFromRun(run: RoiRun, date: string, alreadyCompleted: boolean): RoiRunResult {
+function resultFromRun(
+  run: RoiRun,
+  date: string,
+  executed: boolean,
+  alreadyCompleted: boolean,
+): RoiRunResult {
   return {
     status: run.status,
     date,
     processed: run.processed,
     credited: run.credited,
     failed: run.failed,
+    executed,
     alreadyCompleted,
   };
 }
