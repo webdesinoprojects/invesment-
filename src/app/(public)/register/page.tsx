@@ -20,7 +20,7 @@ export default async function RegisterPage({
     <AuthShell
       wide
       title="Create your account"
-      description="Your sponsor is verified on the server before an account is created."
+      description="Register independently or use an eligible partner's invite link."
       footer={
         <>
           Already registered?{" "}
@@ -35,7 +35,7 @@ export default async function RegisterPage({
       />
       {sponsor.state === "not-found" && (
         <p className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          This referral link is not valid.
+          This referral link is not valid. You can still register without a sponsor.
         </p>
       )}
       <RegisterForm sponsor={sponsor} />

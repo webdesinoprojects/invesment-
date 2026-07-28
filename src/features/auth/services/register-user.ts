@@ -32,23 +32,28 @@ export async function registerUser(
   input: RegisterInput,
 ): Promise<RegisterUserResult> {
   const db = getPrisma();
-  const sponsor = await db.userProfile.findUnique({
-    where: { memberId: input.inviteId },
-    select: {
-      id: true,
-      status: true,
-      isReferralActive: true,
-    },
-  });
+  const sponsor = input.inviteId
+    ? await db.userProfile.findUnique({
+        where: { memberId: input.inviteId },
+        select: {
+          id: true,
+          status: true,
+          isReferralActive: true,
+        },
+      })
+    : null;
 
-  if (!sponsor) {
+  if (input.inviteId && !sponsor) {
     return {
       ok: false,
       code: "SPONSOR_NOT_FOUND",
       message: "The invite ID does not belong to a registered partner.",
     };
   }
-  if (sponsor.status !== "ACTIVE" || !sponsor.isReferralActive) {
+  if (
+    sponsor &&
+    (sponsor.status !== "ACTIVE" || !sponsor.isReferralActive)
+  ) {
     return {
       ok: false,
       code: "SPONSOR_NOT_ELIGIBLE",
@@ -92,11 +97,20 @@ export async function registerUser(
     const [memberId, securityPinHash, sponsorAncestors] = await Promise.all([
       createMemberId(),
       hashSecurityPin(input.securityPin),
-      db.referralClosure.findMany({
-        where: { descendantId: sponsor.id },
-        select: { ancestorId: true, depth: true },
-      }),
+      sponsor
+        ? db.referralClosure.findMany({
+            where: { descendantId: sponsor.id },
+            select: { ancestorId: true, depth: true },
+          })
+        : Promise.resolve<Array<{ ancestorId: string; depth: number }>>([]),
     ]);
+
+    if (
+      sponsor &&
+      !sponsorAncestors.some((ancestor) => ancestor.ancestorId === sponsor.id)
+    ) {
+      sponsorAncestors.push({ ancestorId: sponsor.id, depth: 0 });
+    }
 
     await db.$transaction(async (transaction) => {
       const profile = await transaction.userProfile.create({
@@ -108,7 +122,7 @@ export async function registerUser(
           mobile: input.mobile,
           countryCode: input.countryCode,
           securityPinHash,
-          sponsorId: sponsor.id,
+          sponsorId: sponsor?.id ?? null,
         },
       });
 

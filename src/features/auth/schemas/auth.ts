@@ -6,6 +6,12 @@ const memberId = z
   .toUpperCase()
   .regex(/^NP\d{6,10}$/, "Enter a valid invite ID.");
 
+const optionalMemberId = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  memberId.optional(),
+);
+
 export const passwordSchema = z
   .string()
   .min(8, "Password must contain at least 8 characters.")
@@ -25,7 +31,7 @@ export const loginSchema = z.object({
 
 export const registerSchema = z
   .object({
-    inviteId: memberId,
+    inviteId: optionalMemberId,
     fullName: z
       .string()
       .trim()

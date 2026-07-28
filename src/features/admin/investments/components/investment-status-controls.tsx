@@ -33,6 +33,7 @@ export function InvestmentStatusControls({
     >
       <form action={action} className="space-y-3">
         <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="expectedStatus" value={status} />
         <select
           name="status"
           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"

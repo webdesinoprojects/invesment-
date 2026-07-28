@@ -328,8 +328,8 @@ test("competing investment transitions and stale setting writes cannot overwrite
     },
   });
   const transitions = await Promise.all([
-    transitionInvestment({ id: investment.id, status: "PAUSED", reason: "Review", confirmed: "true", adminId: admin.id }),
-    transitionInvestment({ id: investment.id, status: "CANCELLED", reason: "Close", confirmed: "true", adminId: admin.id }),
+    transitionInvestment({ id: investment.id, expectedStatus: "ACTIVE", status: "PAUSED", reason: "Review", confirmed: "true", adminId: admin.id }),
+    transitionInvestment({ id: investment.id, expectedStatus: "ACTIVE", status: "CANCELLED", reason: "Close", confirmed: "true", adminId: admin.id }),
   ]);
   assert.equal(transitions.filter((result) => result.ok).length, 1);
 
@@ -345,6 +345,9 @@ test("competing investment transitions and stale setting writes cannot overwrite
 });
 
 test("concurrent final-super-admin changes leave at least one active super administrator", { skip: skipReason }, async () => {
+  const baselineActiveSuperAdmins = await prisma.adminProfile.count({
+    where: { role: "SUPER_ADMIN", isActive: true },
+  });
   const first = await createAdmin();
   const second = await createAdmin();
   const results = await Promise.all([
@@ -365,10 +368,14 @@ test("concurrent final-super-admin changes leave at least one active super admin
       actorAdminId: second.id,
     }),
   ]);
-  assert.equal(results.filter((result) => result.ok).length, 1);
-  assert.equal(await prisma.adminProfile.count({
-    where: { id: { in: [first.id, second.id] }, role: "SUPER_ADMIN", isActive: true },
-  }), 1);
+  const activeSuperAdmins = await prisma.adminProfile.count({
+    where: { role: "SUPER_ADMIN", isActive: true },
+  });
+  assert.equal(activeSuperAdmins >= 1, true);
+  assert.equal(
+    results.filter((result) => result.ok).length,
+    baselineActiveSuperAdmins === 0 ? 1 : 2,
+  );
 });
 
 async function createAdmin() {

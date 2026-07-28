@@ -23,20 +23,20 @@ import { SubmitButton } from "./submit-button";
 
 export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
   const [state, action] = useActionState(registerAction, initialActionResult);
-  const inviteId = sponsor.state === "none" ? "" : sponsor.memberId;
+  const inviteId = sponsor.state === "found" ? sponsor.memberId : "";
   const referrerName = sponsor.state === "found" ? sponsor.fullName : "";
 
   return (
     <form action={action} className="space-y-4" noValidate>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="inviteId">Invite ID</Label>
+          <Label htmlFor="inviteId">Invite ID (optional)</Label>
           <Input
             id="inviteId"
             name="inviteId"
             defaultValue={inviteId}
             readOnly={Boolean(inviteId)}
-            placeholder="NP member ID"
+            placeholder="Leave blank without a sponsor"
             aria-invalid={Boolean(state.fieldErrors?.inviteId)}
             className="h-11 uppercase"
           />
@@ -48,7 +48,7 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
             id="referrerName"
             value={referrerName}
             readOnly
-            placeholder="Verified from invite ID"
+            placeholder="No sponsor selected"
             className="h-11"
           />
         </div>

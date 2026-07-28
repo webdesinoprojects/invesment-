@@ -38,8 +38,8 @@ test("withdrawal reject and failure require reasons", () => {
 });
 test("blocking and exceptional investment states require reasons", () => {
   assert.equal(changeMemberStatusSchema.safeParse({ id, status: "BLOCKED", reason: "" }).success, false);
-  assert.equal(transitionInvestmentSchema.safeParse({ id, status: "CANCELLED", reason: "" }).success, false);
-  assert.equal(transitionInvestmentSchema.safeParse({ id, status: "PAUSED", reason: "Compliance review", confirmed: "true" }).success, true);
+  assert.equal(transitionInvestmentSchema.safeParse({ id, expectedStatus: "ACTIVE", status: "CANCELLED", reason: "" }).success, false);
+  assert.equal(transitionInvestmentSchema.safeParse({ id, expectedStatus: "ACTIVE", status: "PAUSED", reason: "Compliance review", confirmed: "true" }).success, true);
 });
 
 test("shared configuration schemas reject invalid financial settings", () => {

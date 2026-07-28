@@ -13,9 +13,10 @@ export async function transitionInvestment(input: TransitionInvestmentInput & { 
   return runSerializable(async (tx) => {
     const investment = await tx.investment.findUnique({ where: { id: input.id }, select: { id: true, userId: true, status: true } });
     if (!investment) return { ok: false as const, code: "NOT_FOUND" };
-    if (!allowed[investment.status]?.includes(input.status)) return { ok: false as const, code: "INVALID_TRANSITION" };
+    if (investment.status !== input.expectedStatus) return { ok: false as const, code: "CONFLICT" };
+    if (!allowed[input.expectedStatus]?.includes(input.status)) return { ok: false as const, code: "INVALID_TRANSITION" };
     const updated = await tx.investment.updateMany({
-      where: { id: investment.id, status: investment.status },
+      where: { id: investment.id, status: input.expectedStatus },
       data: {
         status: input.status, statusChangedById: input.adminId,
         statusReason: input.status === "ACTIVE" ? null : input.reason,
@@ -25,7 +26,7 @@ export async function transitionInvestment(input: TransitionInvestmentInput & { 
     });
     if (updated.count !== 1) return { ok: false as const, code: "CONFLICT" };
     await tx.auditLog.create({
-      data: { actorAdminId: input.adminId, targetUserId: investment.userId, action: "INVESTMENT_STATUS_UPDATE", entityType: "Investment", entityId: investment.id, before: { status: investment.status }, after: { status: input.status }, reason: input.reason || null },
+      data: { actorAdminId: input.adminId, targetUserId: investment.userId, action: "INVESTMENT_STATUS_UPDATE", entityType: "Investment", entityId: investment.id, before: { status: input.expectedStatus }, after: { status: input.status }, reason: input.reason || null },
     });
     return { ok: true as const };
   });

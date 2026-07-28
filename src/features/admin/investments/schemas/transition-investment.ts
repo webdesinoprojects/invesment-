@@ -1,6 +1,7 @@
 import { z } from "zod";
 export const transitionInvestmentSchema = z.object({
   id: z.uuid(),
+  expectedStatus: z.enum(["ACTIVE", "PAUSED"]),
   status: z.enum(["ACTIVE", "PAUSED", "CANCELLED"]),
   reason: z.string().trim().max(500).default(""),
   confirmed: z.literal("true"),
