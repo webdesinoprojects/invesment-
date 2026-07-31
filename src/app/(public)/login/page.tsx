@@ -16,7 +16,7 @@ export default async function LoginPage({
   return (
     <AuthShell
       title="Welcome back"
-      description="Sign in with your email address or Nature Power member ID."
+      description="Sign in with your email address or NEX-GEN POWER member ID."
       footer={
         <>
           Don&apos;t have an account?{" "}

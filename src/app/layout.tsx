@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
+import { BRAND_LOGO_PATH, BRAND_NAME } from "@/lib/brand";
 
 import "./globals.css";
 
@@ -17,10 +18,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Nature Power",
-    template: "%s | Nature Power",
+    default: BRAND_NAME,
+    template: `%s | ${BRAND_NAME}`,
   },
   description: "Community investment, referral, and earnings records.",
+  icons: {
+    icon: BRAND_LOGO_PATH,
+    apple: BRAND_LOGO_PATH,
+  },
 };
 
 export default function RootLayout({

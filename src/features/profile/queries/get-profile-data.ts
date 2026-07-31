@@ -25,6 +25,6 @@ export async function getProfileData(userId: string): Promise<ProfileData> {
     countryCode: profile.countryCode,
     walletAddress: profile.bep20WalletAddress ?? "",
     sponsorMemberId: profile.sponsor?.memberId ?? "Direct registration",
-    sponsorName: profile.sponsor?.fullName ?? "NaturePower",
+    sponsorName: profile.sponsor?.fullName ?? "NEX-GEN POWER",
   };
 }

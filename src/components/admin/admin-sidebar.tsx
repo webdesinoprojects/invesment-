@@ -3,11 +3,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Activity, BadgeDollarSign, ChartNoAxesCombined, ChevronDown, CircleDollarSign,
+  BadgeDollarSign, ChartNoAxesCombined, ChevronDown, CircleDollarSign,
   ClipboardList, CreditCard, Gauge, HeartPulse, Landmark, LogOut, Network,
   ChevronsLeft, ChevronsRight, ReceiptText, Settings, ShieldCheck, Users,
   WalletCards, X,
 } from "lucide-react";
+import { BrandMark } from "@/components/brand/brand-mark";
 import type { AdminRole } from "@/generated/prisma/client";
 import { adminLogoutAction } from "@/features/admin/auth/actions";
 import { can, type AdminPermission } from "@/features/admin/permissions";
@@ -58,8 +59,8 @@ export function AdminSidebar({
         {desktopCollapsed ? <ChevronsRight className="size-5" /> : <ChevronsLeft className="size-5" />}
       </button>
       <div className={`flex h-16 items-center gap-3 border-b border-slate-800 px-4 lg:h-20 ${desktopCollapsed ? "lg:justify-center lg:px-3" : "lg:px-6"}`}>
-        <span className="grid size-10 place-items-center rounded-xl bg-emerald-400 text-slate-950"><Activity className="size-5" /></span>
-        <div className={desktopCollapsed ? "lg:hidden" : ""}><p className="font-bold text-white">NaturePower</p><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-emerald-400">Admin Console</p></div>
+        <BrandMark className="size-11" priority />
+        <div className={desktopCollapsed ? "lg:hidden" : ""}><p className="text-sm font-bold text-white">NEX-GEN POWER</p><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-emerald-400">Admin Console</p></div>
         <button aria-label="Close navigation" onClick={onMobileClose} className="ml-auto grid size-9 place-items-center rounded-lg border border-slate-700 lg:hidden"><X className="size-4" /></button>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

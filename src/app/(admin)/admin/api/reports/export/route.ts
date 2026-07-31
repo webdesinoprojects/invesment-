@@ -43,7 +43,7 @@ export async function GET(request: Request) {
   return new Response(`\uFEFF${csv}`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="naturepower-report-${Date.now()}.csv"`,
+      "Content-Disposition": `attachment; filename="nex-gen-power-report-${Date.now()}.csv"`,
       "Cache-Control": "no-store",
     },
   });

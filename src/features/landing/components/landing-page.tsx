@@ -19,6 +19,8 @@ import { AnimatePresence, motion, useInView } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { BrandMark } from "@/components/brand/brand-mark";
+import { BRAND_NAME } from "@/lib/brand";
 import Earth from "./globe";
 import { Button } from "./landing-button";
 
@@ -63,7 +65,7 @@ const levels = [
 ];
 
 const timeline = [
-  ["2020", "Foundation", "Nature Power established with a vision for sustainable investments."],
+  ["2020", "Foundation", "NEX-GEN POWER established with a vision for sustainable investments."],
   ["2021", "Global Expansion", "Reached 50+ countries with 10,000+ active investors."],
   ["2022", "$1B Milestone", "Surpassed $1 billion in total investments managed."],
   ["2023", "Innovation Award", "Launched AI-powered investment tools for smarter portfolios."],
@@ -79,13 +81,13 @@ const team = [
 
 const testimonials = [
   [
-    "Nature Power transformed my investment strategy. The returns are consistent and the team is incredibly supportive.",
+    "NEX-GEN POWER transformed my investment strategy. The returns are consistent and the team is incredibly supportive.",
     "RP",
     "Rahul Patel",
     "Professional Investor",
   ],
   [
-    "I've been with Nature Power for 3 years. The growth has been phenomenal and the green impact makes it even better.",
+    "I've been with NEX-GEN POWER for 3 years. The growth has been phenomenal and the green impact makes it even better.",
     "EM",
     "Elena Martinez",
     "Entrepreneur",
@@ -159,9 +161,9 @@ function SectionTitle({
 
 function Logo() {
   return (
-    <button className="logo" onClick={() => scrollTo("home")} aria-label="NaturePower home">
-      <span className="logo-mark"><Leaf size={25} fill="currentColor" /></span>
-      <span>Nature<span>Power</span></span>
+    <button className="logo" onClick={() => scrollTo("home")} aria-label={`${BRAND_NAME} home`}>
+      <BrandMark className="logo-mark" priority />
+      <span>NEX-GEN <span>POWER</span></span>
     </button>
   );
 }
@@ -445,7 +447,7 @@ export default function LandingPage() {
           <Reveal className="about-copy">
             <span className="eyebrow">About us</span>
             <h2>Leading The <em>Green<br />Revolution</em> In Finance</h2>
-            <p>Nature Power is a premier investment company dedicated to sustainable energy projects worldwide. We combine financial expertise with environmental stewardship to deliver exceptional value.</p>
+            <p>NEX-GEN POWER is a premier investment company dedicated to sustainable energy projects worldwide. We combine financial expertise with environmental stewardship to deliver exceptional value.</p>
             {[
               ["Renewable Energy Projects", 94],
               ["Investor Satisfaction", 98],
@@ -633,7 +635,7 @@ export default function LandingPage() {
               <div className="map-lines" />
               <div className="map-pin"><Leaf /></div>
               <div className="location-info">
-                <span>NaturePower HQ</span>
+                <span>NEX-GEN POWER HQ</span>
                 <strong>New Delhi, India</strong>
                 <small>Global support • Monday–Saturday</small>
               </div>
@@ -647,7 +649,7 @@ export default function LandingPage() {
           <span className="eyebrow">Newsletter</span>
           <h2>Stay <em>Updated</em></h2>
           <p>Get sustainable-energy insights and company news delivered to your inbox.</p>
-          <form onSubmit={(event) => submit(event, "You’re subscribed — welcome to NaturePower.")}>
+          <form onSubmit={(event) => submit(event, "You’re subscribed — welcome to NEX-GEN POWER.")}>
             <input required type="email" placeholder="Enter your email" aria-label="Newsletter email" />
             <Button type="submit">Subscribe</Button>
           </form>
@@ -667,9 +669,9 @@ export default function LandingPage() {
           <div><Logo /><p>Premium green-energy opportunities for a more sustainable and prosperous future.</p></div>
           <div><h3>Quick Links</h3>{navigation.slice(0, 4).map(([label, id]) => <button key={id} onClick={() => scrollTo(id)}>{label}</button>)}</div>
           <div><h3>Legal</h3><button>Privacy Policy</button><button>Terms of Service</button><button>Risk Disclosure</button><button>Compliance</button></div>
-          <div><h3>Connect</h3><p>hello@naturepower.example</p><p>New Delhi, India</p></div>
+          <div><h3>Connect</h3><p>hello@nexgenpower.example</p><p>New Delhi, India</p></div>
         </div>
-        <div className="container copyright">© 2026 NaturePower. All rights reserved.<span>Designed for a greener tomorrow.</span></div>
+        <div className="container copyright">© 2026 NEX-GEN POWER. All rights reserved.<span>Designed for a greener tomorrow.</span></div>
       </footer>
     </main>
   );

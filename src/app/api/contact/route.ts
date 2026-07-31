@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { BRAND_NAME } from "@/lib/brand";
+
 type ContactBody = {
   name?: string;
   email?: string;
@@ -46,10 +48,10 @@ export async function POST(request: Request) {
   // domain. Keep the configured inbox as the recipient and use Resend's
   // testing sender until a custom domain is verified.
   const fromEmail = /@(gmail|yahoo|outlook|hotmail)\./i.test(configuredFromEmail)
-    ? "NaturePower <onboarding@resend.dev>"
+    ? `${BRAND_NAME} <onboarding@resend.dev>`
     : configuredFromEmail.includes("<")
       ? configuredFromEmail
-      : `NaturePower <${configuredFromEmail}>`;
+      : `${BRAND_NAME} <${configuredFromEmail}>`;
 
   const safe = {
     name: escapeHtml(name),
@@ -70,7 +72,7 @@ export async function POST(request: Request) {
       from: fromEmail,
       to: [contactEmail],
       reply_to: email,
-      subject: `New NaturePower enquiry from ${name}`,
+      subject: `New ${BRAND_NAME} enquiry from ${name}`,
       html: `
         <!doctype html>
         <html>
@@ -80,10 +82,10 @@ export async function POST(request: Request) {
                 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:linear-gradient(145deg,#151916,#0d100e);border:1px solid #23472f;border-radius:24px;overflow:hidden">
                   <tr><td style="height:6px;background:linear-gradient(90deg,#16ab55,#ffbd00)"></td></tr>
                   <tr><td style="padding:38px 42px 18px">
-                    <div style="font-size:25px;font-weight:800">🌿 Nature<span style="color:#16ab55">Power</span></div>
+                    <div style="font-size:25px;font-weight:800">NEX-GEN <span style="color:#16ab55">POWER</span></div>
                     <div style="margin-top:34px;color:#16ab55;font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase">New website enquiry</div>
                     <h1 style="margin:12px 0 10px;font-size:31px;line-height:1.2">A new connection is <span style="color:#ffbd00">growing.</span></h1>
-                    <p style="margin:0;color:#9da39f;line-height:1.7">Someone has contacted NaturePower through the public website.</p>
+                    <p style="margin:0;color:#9da39f;line-height:1.7">Someone has contacted NEX-GEN POWER through the public website.</p>
                   </td></tr>
                   <tr><td style="padding:20px 42px 38px">
                     <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0d0b;border:1px solid #202823;border-radius:16px">
@@ -92,7 +94,7 @@ export async function POST(request: Request) {
                       <tr><td style="padding:22px;border-bottom:1px solid #202823"><div style="color:#7b837e;font-size:11px;text-transform:uppercase;letter-spacing:2px">Interested package</div><div style="margin-top:6px;color:#ffbd00;font-weight:700">${safe.package}</div></td></tr>
                       <tr><td style="padding:22px"><div style="color:#7b837e;font-size:11px;text-transform:uppercase;letter-spacing:2px">Message</div><div style="margin-top:9px;line-height:1.7;color:#d8dcda">${safe.message}</div></td></tr>
                     </table>
-                    <p style="margin:24px 0 0;color:#68706b;font-size:12px;text-align:center">Sent securely from the NaturePower contact form.</p>
+                    <p style="margin:24px 0 0;color:#68706b;font-size:12px;text-align:center">Sent securely from the NEX-GEN POWER contact form.</p>
                   </td></tr>
                 </table>
               </td></tr>

@@ -6,12 +6,12 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { getServerEnv } from "@/lib/env/server";
 
 const globalForPrisma = globalThis as typeof globalThis & {
-  naturePowerPrisma?: PrismaClient;
+  nexGenPowerPrisma?: PrismaClient;
 };
 
 export function getPrisma(): PrismaClient {
-  if (globalForPrisma.naturePowerPrisma) {
-    return globalForPrisma.naturePowerPrisma;
+  if (globalForPrisma.nexGenPowerPrisma) {
+    return globalForPrisma.nexGenPowerPrisma;
   }
 
   const adapter = new PrismaPg({
@@ -20,7 +20,7 @@ export function getPrisma(): PrismaClient {
   const client = new PrismaClient({ adapter });
 
   if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.naturePowerPrisma = client;
+    globalForPrisma.nexGenPowerPrisma = client;
   }
 
   return client;
