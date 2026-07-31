@@ -35,7 +35,7 @@ export async function requireUser(): Promise<AuthenticatedUser> {
 
   if (!profile || profile.status === "BLOCKED") {
     await supabase.auth.signOut();
-    redirect("/login");
+    redirect(profile?.status === "BLOCKED" ? "/login?account=blocked" : "/login");
   }
 
   return profile;

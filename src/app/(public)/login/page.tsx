@@ -9,7 +9,11 @@ export const metadata: Metadata = { title: "Login" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; authError?: string }>;
+  searchParams: Promise<{
+    next?: string;
+    authError?: string;
+    account?: string;
+  }>;
 }) {
   const params = await searchParams;
 
@@ -29,6 +33,15 @@ export default async function LoginPage({
       {params.authError === "1" && (
         <p className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           The authentication link is invalid or expired. Please try again.
+        </p>
+      )}
+      {params.account === "blocked" && (
+        <p
+          className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          Your account has been blocked. Sign in to view the administrator&apos;s
+          message.
         </p>
       )}
       <LoginForm {...(params.next ? { next: params.next } : {})} />

@@ -40,9 +40,9 @@ export async function loginAction(
     where: loginId.includes("@")
       ? { email: loginId.toLowerCase() }
       : { memberId: loginId.toUpperCase() },
-    select: { email: true, status: true },
+    select: { email: true, status: true, blockReason: true },
   });
-  if (!profile || profile.status === "BLOCKED") {
+  if (!profile) {
     return {
       ok: false,
       code: "INVALID_CREDENTIALS",
@@ -61,6 +61,17 @@ export async function loginAction(
       ok: false,
       code: "INVALID_CREDENTIALS",
       message: "Invalid login ID or password.",
+    };
+  }
+
+  if (profile.status === "BLOCKED") {
+    await supabase.auth.signOut();
+    return {
+      ok: false,
+      code: "ACCOUNT_BLOCKED",
+      message: profile.blockReason
+        ? `Your account is blocked. Reason: ${profile.blockReason}`
+        : "Your account is blocked. Contact support for assistance.",
     };
   }
 
