@@ -26,6 +26,10 @@ export const securityPinSchema = z
 export const loginSchema = z.object({
   loginId: z.string().trim().min(3, "Enter your email or member ID."),
   password: z.string().min(1, "Enter your password."),
+  rememberMe: z.preprocess(
+    (value) => value === true || value === "true" || value === "on",
+    z.boolean(),
+  ),
   next: z.string().optional(),
 });
 

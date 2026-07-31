@@ -6,7 +6,10 @@ import { validationFailure, serviceUnavailable } from "./action-helpers";
 import { loginSchema } from "@/features/auth/schemas/auth";
 import { getPrisma } from "@/lib/db/prisma";
 import { isAuthConfigured } from "@/lib/env/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  setSessionPersistencePreference,
+} from "@/lib/supabase/server";
 import type { ActionResult } from "@/types/action-result";
 
 function safeRedirectPath(value: string | undefined): string {
@@ -22,6 +25,7 @@ export async function loginAction(
   const parsed = loginSchema.safeParse({
     loginId: formData.get("loginId"),
     password: formData.get("password"),
+    rememberMe: formData.get("rememberMe"),
     next: formData.get("next") || undefined,
   });
   if (!parsed.success) {
@@ -46,7 +50,8 @@ export async function loginAction(
     };
   }
 
-  const supabase = await createSupabaseServerClient();
+  const persistence = parsed.data.rememberMe ? "persistent" : "session";
+  const supabase = await createSupabaseServerClient(persistence);
   const { error } = await supabase.auth.signInWithPassword({
     email: profile.email,
     password: parsed.data.password,
@@ -59,5 +64,6 @@ export async function loginAction(
     };
   }
 
+  await setSessionPersistencePreference(persistence);
   redirect(safeRedirectPath(parsed.data.next));
 }

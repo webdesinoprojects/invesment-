@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getPrisma } from "@/lib/db/prisma";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  setSessionPersistencePreference,
+} from "@/lib/supabase/server";
 import { getAdminSession, signOutAdmin } from "@/lib/admin/session";
 
 import {
@@ -44,7 +47,7 @@ export async function adminLoginAction(
     return { error: GENERIC_LOGIN_ERROR };
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient("session");
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error || !data.user) {
     await recordAdminLoginFailure({ key: throttleKey, ipAddress });
@@ -61,6 +64,7 @@ export async function adminLoginAction(
     return { error: GENERIC_LOGIN_ERROR };
   }
 
+  await setSessionPersistencePreference("session");
   await getPrisma().$transaction([
     getPrisma().adminProfile.update({
       where: { id: admin.id },

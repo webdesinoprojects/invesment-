@@ -45,7 +45,7 @@ export function LoginForm({ next }: { next?: string }) {
       </div>
       <div className="flex items-center justify-between gap-3 text-sm">
         <label className="flex items-center gap-2 text-muted-foreground">
-          <Checkbox name="rememberMe" />
+          <Checkbox name="rememberMe" value="true" />
           Keep me signed in
         </label>
         <Link className="text-primary hover:underline" href="/forgot-password">

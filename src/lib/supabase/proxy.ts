@@ -1,6 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  applySessionPersistence,
+  parseSessionPersistence,
+  SESSION_PERSISTENCE_COOKIE,
+} from "@/lib/auth/session-persistence";
+
 const protectedPrefixes = [
   "/dashboard",
   "/deposit",
@@ -34,6 +40,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   let response = NextResponse.next({ request });
+  const persistence = parseSessionPersistence(
+    request.cookies.get(SESSION_PERSISTENCE_COOKIE)?.value,
+  );
   const supabase = createServerClient(supabaseUrl, publishableKey, {
     cookies: {
       getAll: () => request.cookies.getAll(),
@@ -43,7 +52,11 @@ export async function updateSession(request: NextRequest) {
         });
         response = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
+          response.cookies.set(
+            name,
+            value,
+            applySessionPersistence(options, value, persistence),
+          );
         });
         Object.entries(headersToSet).forEach(([key, value]) => {
           response.headers.set(key, value);
