@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+import { countries } from "@/features/auth/constants/countries";
+import { normalizeMobileNumber } from "@/features/auth/services/normalize-mobile-number";
+
+const supportedCountryCodes = countries.map((country) => country.code) as [
+  (typeof countries)[number]["code"],
+  ...(typeof countries)[number]["code"][],
+];
+
 const memberId = z
   .string()
   .trim()
@@ -46,12 +54,14 @@ export const registerSchema = z
     ),
     countryCode: z
       .string()
-      .length(2, "Select a country.")
-      .transform((value) => value.toUpperCase()),
+      .trim()
+      .transform((value) => value.toUpperCase())
+      .pipe(z.enum(supportedCountryCodes, "Select a valid country.")),
     mobile: z
       .string()
       .trim()
-      .regex(/^\+?[1-9]\d{7,14}$/, "Enter a valid mobile number."),
+      .min(1, "Enter your mobile number.")
+      .max(32, "Mobile number is too long."),
     password: passwordSchema,
     confirmPassword: z.string(),
     securityPin: securityPinSchema,
@@ -59,7 +69,20 @@ export const registerSchema = z
   .refine((data) => data.password === data.confirmPassword, {
     path: ["confirmPassword"],
     message: "Passwords do not match.",
-  });
+  })
+  .superRefine((data, context) => {
+    if (!normalizeMobileNumber(data.mobile, data.countryCode)) {
+      context.addIssue({
+        code: "custom",
+        path: ["mobile"],
+        message: "Enter a valid mobile number for the selected country.",
+      });
+    }
+  })
+  .transform((data) => ({
+    ...data,
+    mobile: normalizeMobileNumber(data.mobile, data.countryCode)!,
+  }));
 
 export const forgotPasswordSchema = z.object({
   email: z.email("Enter a valid email address.").transform((value) =>

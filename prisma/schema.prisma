@@ -116,7 +116,7 @@ model UserProfile {
   memberId                  String              @unique @db.VarChar(16)
   fullName                  String              @db.VarChar(120)
   email                     String              @unique @db.VarChar(254)
-  mobile                    String              @db.VarChar(24)
+  mobile                    String              @unique @db.VarChar(24)
   countryCode               String              @db.Char(2)
   securityPinHash           String              @db.Text
   securityPinFailedAttempts Int                 @default(0)

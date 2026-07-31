@@ -37,3 +37,35 @@ test("registration still validates a supplied sponsor", () => {
   assert.equal(parsed.success, true);
   if (parsed.success) assert.equal(parsed.data.inviteId, "NP123456");
 });
+
+test("registration normalizes equivalent mobile formats to E.164", () => {
+  const local = registerSchema.safeParse({
+    ...validRegistration,
+    mobile: "98765 43210",
+  });
+  const international = registerSchema.safeParse({
+    ...validRegistration,
+    mobile: "+91 98765-43210",
+  });
+
+  assert.equal(local.success, true);
+  assert.equal(international.success, true);
+  if (local.success && international.success) {
+    assert.equal(local.data.mobile, "+919876543210");
+    assert.equal(international.data.mobile, local.data.mobile);
+  }
+});
+
+test("registration rejects an invalid mobile for the selected country", () => {
+  const parsed = registerSchema.safeParse({
+    ...validRegistration,
+    mobile: "12345",
+  });
+
+  assert.equal(parsed.success, false);
+  if (!parsed.success) {
+    assert.deepEqual(parsed.error.flatten().fieldErrors.mobile, [
+      "Enter a valid mobile number for the selected country.",
+    ]);
+  }
+});

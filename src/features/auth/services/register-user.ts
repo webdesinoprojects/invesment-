@@ -62,15 +62,28 @@ export async function registerUser(
     };
   }
 
-  const existingProfile = await db.userProfile.findUnique({
-    where: { email: input.email },
-    select: { id: true },
-  });
-  if (existingProfile) {
+  const [existingEmail, existingMobile] = await Promise.all([
+    db.userProfile.findUnique({
+      where: { email: input.email },
+      select: { id: true },
+    }),
+    db.userProfile.findUnique({
+      where: { mobile: input.mobile },
+      select: { id: true },
+    }),
+  ]);
+  if (existingEmail) {
     return {
       ok: false,
       code: "EMAIL_EXISTS",
       message: "An account already exists for this email address.",
+    };
+  }
+  if (existingMobile) {
+    return {
+      ok: false,
+      code: "MOBILE_EXISTS",
+      message: "An account already exists for this mobile number.",
     };
   }
 
@@ -158,8 +171,42 @@ export async function registerUser(
       memberId,
       joinedAt: profile.createdAt.toISOString(),
     };
-  } catch {
+  } catch (error) {
     await adminAuth.auth.admin.deleteUser(data.user.id).catch(() => undefined);
+
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      const [duplicateEmail, duplicateMobile] = await Promise.all([
+        db.userProfile.findUnique({
+          where: { email: input.email },
+          select: { id: true },
+        }),
+        db.userProfile.findUnique({
+          where: { mobile: input.mobile },
+          select: { id: true },
+        }),
+      ]);
+
+      if (duplicateMobile) {
+        return {
+          ok: false,
+          code: "MOBILE_EXISTS",
+          message: "An account already exists for this mobile number.",
+        };
+      }
+      if (duplicateEmail) {
+        return {
+          ok: false,
+          code: "EMAIL_EXISTS",
+          message: "An account already exists for this email address.",
+        };
+      }
+    }
+
     return {
       ok: false,
       code: "PROFILE_CREATE_FAILED",
