@@ -32,12 +32,40 @@ const initialRegisterState: ActionResult<RegistrationReceiptData> = {
   message: "",
 };
 
+type RegisterFormValues = {
+  inviteId: string;
+  fullName: string;
+  email: string;
+  countryCode: string;
+  mobile: string;
+  password: string;
+  confirmPassword: string;
+  securityPin: string;
+};
+
 export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
   const [state, action] = useActionState(registerAction, initialRegisterState);
   const [submittedSecrets, setSubmittedSecrets] =
     useState<RegistrationSecrets | null>(null);
   const inviteId = sponsor.state === "found" ? sponsor.memberId : "";
   const referrerName = sponsor.state === "found" ? sponsor.fullName : "";
+  const [values, setValues] = useState<RegisterFormValues>({
+    inviteId,
+    fullName: "",
+    email: "",
+    countryCode: "IN",
+    mobile: "",
+    password: "",
+    confirmPassword: "",
+    securityPin: "",
+  });
+
+  function updateValue(
+    field: keyof RegisterFormValues,
+    value: RegisterFormValues[typeof field],
+  ) {
+    setValues((current) => ({ ...current, [field]: value }));
+  }
 
   if (state.ok && submittedSecrets) {
     return (
@@ -50,11 +78,10 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
       action={action}
       className="space-y-4"
       noValidate
-      onSubmit={(event) => {
-        const data = new FormData(event.currentTarget);
+      onSubmit={() => {
         setSubmittedSecrets({
-          password: String(data.get("password") ?? ""),
-          securityPin: String(data.get("securityPin") ?? ""),
+          password: values.password,
+          securityPin: values.securityPin,
         });
       }}
     >
@@ -64,7 +91,8 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
           <Input
             id="inviteId"
             name="inviteId"
-            defaultValue={inviteId}
+            value={values.inviteId}
+            onChange={(event) => updateValue("inviteId", event.target.value)}
             readOnly={Boolean(inviteId)}
             placeholder="Leave blank without a sponsor"
             aria-invalid={Boolean(state.fieldErrors?.inviteId)}
@@ -88,6 +116,8 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
         <Input
           id="fullName"
           name="fullName"
+          value={values.fullName}
+          onChange={(event) => updateValue("fullName", event.target.value)}
           autoComplete="name"
           placeholder="Enter your full name"
           aria-invalid={Boolean(state.fieldErrors?.fullName)}
@@ -102,6 +132,8 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
             id="email"
             name="email"
             type="email"
+            value={values.email}
+            onChange={(event) => updateValue("email", event.target.value)}
             autoComplete="email"
             placeholder="name@example.com"
             aria-invalid={Boolean(state.fieldErrors?.email)}
@@ -111,7 +143,11 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="countryCode">Country</Label>
-          <Select name="countryCode" defaultValue="IN">
+          <Select
+            name="countryCode"
+            value={values.countryCode}
+            onValueChange={(value) => updateValue("countryCode", value)}
+          >
             <SelectTrigger id="countryCode" className="h-11 w-full">
               <SelectValue placeholder="Select country" />
             </SelectTrigger>
@@ -133,6 +169,8 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
           name="mobile"
           type="tel"
           inputMode="tel"
+          value={values.mobile}
+          onChange={(event) => updateValue("mobile", event.target.value)}
           autoComplete="tel"
           placeholder="Include country code when needed"
           aria-invalid={Boolean(state.fieldErrors?.mobile)}
@@ -148,6 +186,8 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
             name="password"
             placeholder="At least 8 characters"
             autoComplete="new-password"
+            value={values.password}
+            onChange={(event) => updateValue("password", event.target.value)}
             invalid={Boolean(state.fieldErrors?.password)}
           />
           <FormFieldError errors={state.fieldErrors?.password} />
@@ -159,6 +199,10 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
             name="confirmPassword"
             placeholder="Repeat password"
             autoComplete="new-password"
+            value={values.confirmPassword}
+            onChange={(event) =>
+              updateValue("confirmPassword", event.target.value)
+            }
             invalid={Boolean(state.fieldErrors?.confirmPassword)}
           />
           <FormFieldError errors={state.fieldErrors?.confirmPassword} />
@@ -174,6 +218,8 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
           autoComplete="off"
           minLength={4}
           maxLength={6}
+          value={values.securityPin}
+          onChange={(event) => updateValue("securityPin", event.target.value)}
           placeholder="4 to 6 digits"
           aria-invalid={Boolean(state.fieldErrors?.securityPin)}
           className="h-11"
