@@ -33,6 +33,7 @@ export async function updateWalletAddressAction(
       });
       await transaction.auditLog.create({
         data: {
+          actorType: "SYSTEM",
           targetUserId: user.id,
           action: "USER_WALLET_ADDRESS_UPDATED",
           entityType: "UserProfile",

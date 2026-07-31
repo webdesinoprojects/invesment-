@@ -50,6 +50,7 @@ export async function updateSecurityPinAction(
       }),
       getPrisma().auditLog.create({
         data: {
+          actorType: "SYSTEM",
           targetUserId: user.id,
           action: "USER_SECURITY_PIN_UPDATED",
           entityType: "UserProfile",

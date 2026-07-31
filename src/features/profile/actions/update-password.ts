@@ -44,6 +44,7 @@ export async function updatePasswordAction(
 
   await getPrisma().auditLog.create({
     data: {
+      actorType: "SYSTEM",
       targetUserId: user.id,
       action: "USER_PASSWORD_UPDATED",
       entityType: "UserProfile",
