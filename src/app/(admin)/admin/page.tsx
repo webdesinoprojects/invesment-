@@ -5,6 +5,8 @@ import { getPrisma } from "@/lib/db/prisma";
 import { formatDecimalCurrency } from "@/features/admin/shared/format-decimal";
 import { Prisma } from "@/generated/prisma/client";
 import { getIndiaBusinessDayBounds } from "@/lib/date/business-day";
+import { getTodayRoiStatus } from "@/features/admin/roi/get-today-roi-status";
+import { TodayRoiStatusCard } from "@/features/admin/roi/today-roi-status-card";
 
 const money = (value: { toString(): string } | string | null | undefined) => formatDecimalCurrency(value);
 const date = (value: Date) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(value);
@@ -12,6 +14,7 @@ const date = (value: Date) => new Intl.DateTimeFormat("en", { dateStyle: "medium
 export default async function AdminDashboard() {
   const prisma = getPrisma();
   const now = new Date(); const today = getIndiaBusinessDayBounds(now);
+  const todayRoiStatusPromise = getTodayRoiStatus(now);
   const months = Array.from({ length: 6 }, (_, index) => {
     const start = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
     const end = new Date(now.getFullYear(), now.getMonth() - 4 + index, 1);
@@ -52,6 +55,7 @@ export default async function AdminDashboard() {
   ]);
   const income = Object.fromEntries(incomes.map((row) => [row.type, row._sum.amount ?? new Prisma.Decimal(0)]));
   const totalWalletBalance = walletBalances.reduce((sum, entry) => sum.plus(entry.balanceAfter), new Prisma.Decimal(0));
+  const todayRoiStatus = await todayRoiStatusPromise;
   const cards = [
     ["Total members",totalMembers,Users,"text-blue-600 bg-blue-50"],["Active members",activeMembers,UserCheck,"text-emerald-600 bg-emerald-50"],["Pending members",pendingMembers,Clock3,"text-amber-600 bg-amber-50"],["Blocked members",blockedMembers,ShieldAlert,"text-red-600 bg-red-50"],
     ["New today",newToday,TrendingUp,"text-violet-600 bg-violet-50"],["Wallet balance",money(totalWalletBalance),WalletCards,"text-indigo-600 bg-indigo-50"],["Active investment",money(investments._sum.amount),CircleDollarSign,"text-emerald-600 bg-emerald-50"],["Approved deposits",money(approvedDeposits._sum.approvedAmount),ArrowDownToLine,"text-cyan-600 bg-cyan-50"],["Pending deposits",money(pendingDeposits._sum.amount),Clock3,"text-amber-600 bg-amber-50"],
@@ -60,6 +64,7 @@ export default async function AdminDashboard() {
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-600">Command center</p><h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">Dashboard overview</h1><p className="mt-1 text-sm text-slate-500">Financial and operational records from the connected database.</p></div><span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"><CheckCircle2 className="mr-1 inline size-4"/>Queried {new Date().toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"})}</span></div>
+      <TodayRoiStatusCard status={todayRoiStatus} />
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4 2xl:grid-cols-6">{cards.map(([label,value,Icon,color])=><div key={label} className="group relative min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-white to-slate-50 p-3 shadow-[0_4px_16px_rgba(15,23,42,.06)] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_10px_28px_rgba(15,23,42,.1)] sm:p-4"><span className="absolute -right-5 -top-5 size-16 rounded-full bg-emerald-100/40 transition group-hover:scale-125" /><div className={`relative grid size-8 place-items-center rounded-xl ring-1 ring-black/5 sm:size-9 ${color}`}><Icon className="size-4"/></div><p className="relative mt-3 truncate text-[11px] font-semibold text-slate-500 sm:mt-4 sm:text-xs">{label}</p><p className="relative mt-1 break-words text-[clamp(.9rem,4vw,1.25rem)] font-extrabold leading-tight tracking-tight text-slate-950">{value}</p></div>)}</div>
       <DashboardCharts data={monthly} statuses={[{name:"Active",value:activeMembers},{name:"Pending",value:pendingMembers},{name:"Blocked",value:blockedMembers}]} />
       <div className="grid gap-5 xl:grid-cols-3">
