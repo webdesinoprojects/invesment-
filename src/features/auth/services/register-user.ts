@@ -8,7 +8,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { RegisterInput } from "@/features/auth/schemas/auth";
 
 export type RegisterUserResult =
-  | { ok: true; memberId: string }
+  | { ok: true; memberId: string; joinedAt: string }
   | { ok: false; code: string; message: string };
 
 async function createMemberId(): Promise<string> {
@@ -112,7 +112,7 @@ export async function registerUser(
       sponsorAncestors.push({ ancestorId: sponsor.id, depth: 0 });
     }
 
-    await db.$transaction(async (transaction) => {
+    const profile = await db.$transaction(async (transaction) => {
       const profile = await transaction.userProfile.create({
         data: {
           authUserId: data.user.id,
@@ -149,9 +149,15 @@ export async function registerUser(
         ],
         skipDuplicates: true,
       });
+
+      return profile;
     });
 
-    return { ok: true, memberId };
+    return {
+      ok: true,
+      memberId,
+      joinedAt: profile.createdAt.toISOString(),
+    };
   } catch {
     await adminAuth.auth.admin.deleteUser(data.user.id).catch(() => undefined);
     return {

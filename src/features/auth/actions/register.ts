@@ -2,15 +2,16 @@
 
 import { registerSchema } from "@/features/auth/schemas/auth";
 import { registerUser } from "@/features/auth/services/register-user";
+import type { RegistrationReceiptData } from "@/features/auth/types/registration";
 import { isAuthConfigured } from "@/lib/env/server";
 import type { ActionResult } from "@/types/action-result";
 
 import { serviceUnavailable, validationFailure } from "./action-helpers";
 
 export async function registerAction(
-  _previousState: ActionResult,
+  _previousState: ActionResult<RegistrationReceiptData>,
   formData: FormData,
-): Promise<ActionResult> {
+): Promise<ActionResult<RegistrationReceiptData>> {
   const parsed = registerSchema.safeParse({
     inviteId: formData.get("inviteId"),
     fullName: formData.get("fullName"),
@@ -22,10 +23,10 @@ export async function registerAction(
     securityPin: formData.get("securityPin"),
   });
   if (!parsed.success) {
-    return validationFailure(parsed.error);
+    return validationFailure<RegistrationReceiptData>(parsed.error);
   }
   if (!isAuthConfigured()) {
-    return serviceUnavailable();
+    return serviceUnavailable<RegistrationReceiptData>();
   }
 
   try {
@@ -36,8 +37,13 @@ export async function registerAction(
     return {
       ok: true,
       code: "SUCCESS",
-      data: undefined,
-      message: `Account created. Your login ID is ${result.memberId}.`,
+      data: {
+        memberId: result.memberId,
+        fullName: parsed.data.fullName,
+        email: parsed.data.email,
+        joinedAt: result.joinedAt,
+      },
+      message: "Account created successfully.",
     };
   } catch {
     return {

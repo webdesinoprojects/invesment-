@@ -2,7 +2,7 @@ import { CircleCheck, TriangleAlert } from "lucide-react";
 
 import type { ActionResult } from "@/types/action-result";
 
-export function ActionFeedback({ state }: { state: ActionResult }) {
+export function ActionFeedback({ state }: { state: ActionResult<unknown> }) {
   if (state.code === "IDLE" || !state.message) {
     return null;
   }

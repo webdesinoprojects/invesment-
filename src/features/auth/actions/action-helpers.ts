@@ -2,7 +2,9 @@ import type { z } from "zod";
 
 import type { ActionResult } from "@/types/action-result";
 
-export function validationFailure(error: z.ZodError): ActionResult {
+export function validationFailure<T = undefined>(
+  error: z.ZodError,
+): ActionResult<T> {
   const fieldErrors: Record<string, string[]> = {};
 
   for (const issue of error.issues) {
@@ -19,7 +21,7 @@ export function validationFailure(error: z.ZodError): ActionResult {
   };
 }
 
-export function serviceUnavailable(): ActionResult {
+export function serviceUnavailable<T = undefined>(): ActionResult<T> {
   return {
     ok: false,
     code: "SERVICE_UNAVAILABLE",

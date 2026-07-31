@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,20 +14,50 @@ import {
 import { registerAction } from "@/features/auth/actions/register";
 import { countries } from "@/features/auth/constants/countries";
 import type { SponsorPreview } from "@/features/auth/queries/get-sponsor-preview";
-import { initialActionResult } from "@/types/action-result";
+import type {
+  RegistrationReceiptData,
+  RegistrationSecrets,
+} from "@/features/auth/types/registration";
+import type { ActionResult } from "@/types/action-result";
 
 import { ActionFeedback } from "./action-feedback";
 import { FormFieldError } from "./field-error";
 import { PasswordInput } from "./password-input";
+import { RegistrationReceipt } from "./registration-receipt";
 import { SubmitButton } from "./submit-button";
 
+const initialRegisterState: ActionResult<RegistrationReceiptData> = {
+  ok: false,
+  code: "IDLE",
+  message: "",
+};
+
 export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
-  const [state, action] = useActionState(registerAction, initialActionResult);
+  const [state, action] = useActionState(registerAction, initialRegisterState);
+  const [submittedSecrets, setSubmittedSecrets] =
+    useState<RegistrationSecrets | null>(null);
   const inviteId = sponsor.state === "found" ? sponsor.memberId : "";
   const referrerName = sponsor.state === "found" ? sponsor.fullName : "";
 
+  if (state.ok && submittedSecrets) {
+    return (
+      <RegistrationReceipt details={state.data} secrets={submittedSecrets} />
+    );
+  }
+
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <form
+      action={action}
+      className="space-y-4"
+      noValidate
+      onSubmit={(event) => {
+        const data = new FormData(event.currentTarget);
+        setSubmittedSecrets({
+          password: String(data.get("password") ?? ""),
+          securityPin: String(data.get("securityPin") ?? ""),
+        });
+      }}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="inviteId">Invite ID (optional)</Label>
