@@ -14,12 +14,27 @@ import { FormFieldError } from "./field-error";
 import { PasswordInput } from "./password-input";
 import { SubmitButton } from "./submit-button";
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({
+  next,
+  accountBlocked = false,
+}: {
+  next?: string;
+  accountBlocked?: boolean;
+}) {
   const [state, action] = useActionState(loginAction, initialActionResult);
 
   return (
     <form action={action} className="space-y-4" noValidate>
       {next && <input type="hidden" name="next" value={next} />}
+      {accountBlocked && state.code === "IDLE" && (
+        <p
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          Your account has been blocked. Enter your credentials to view the
+          administrator&apos;s message.
+        </p>
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="loginId">Login ID</Label>
         <Input
