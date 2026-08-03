@@ -53,7 +53,7 @@ function CredentialField({
         placeholder={`Enter ${label.toLowerCase()}`}
         autoComplete={autoComplete}
         invalid={Boolean(state.fieldErrors?.[name])}
-        minLength={name === "currentPassword" ? undefined : 8}
+        minLength={name === "currentPassword" ? undefined : 6}
         maxLength={64}
       />
       <FormFieldError errors={state.fieldErrors?.[name]} />

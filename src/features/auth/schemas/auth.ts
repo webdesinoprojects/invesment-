@@ -22,10 +22,8 @@ const optionalMemberId = z.preprocess(
 
 export const passwordSchema = z
   .string()
-  .min(8, "Password must contain at least 8 characters.")
-  .max(64, "Password cannot exceed 64 characters.")
-  .regex(/[A-Za-z]/, "Password must include a letter.")
-  .regex(/\d/, "Password must include a number.");
+  .min(6, "Password must contain at least 6 characters.")
+  .max(64, "Password cannot exceed 64 characters.");
 
 export const securityPinSchema = z
   .string()

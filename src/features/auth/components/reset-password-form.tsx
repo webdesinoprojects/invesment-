@@ -26,7 +26,7 @@ export function ResetPasswordForm() {
           name="password"
           placeholder="New password"
           autoComplete="new-password"
-          minLength={8}
+          minLength={6}
           maxLength={64}
           invalid={Boolean(state.fieldErrors?.password)}
         />
@@ -38,7 +38,7 @@ export function ResetPasswordForm() {
           name="confirmPassword"
           placeholder="Confirm new password"
           autoComplete="new-password"
-          minLength={8}
+          minLength={6}
           maxLength={64}
           invalid={Boolean(state.fieldErrors?.confirmPassword)}
         />

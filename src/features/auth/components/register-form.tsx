@@ -184,8 +184,10 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
           <PasswordInput
             id="register-password"
             name="password"
-            placeholder="At least 8 characters"
+            placeholder="6 or more characters"
             autoComplete="new-password"
+            minLength={6}
+            maxLength={64}
             value={values.password}
             onChange={(event) => updateValue("password", event.target.value)}
             invalid={Boolean(state.fieldErrors?.password)}
@@ -199,6 +201,8 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
             name="confirmPassword"
             placeholder="Repeat password"
             autoComplete="new-password"
+            minLength={6}
+            maxLength={64}
             value={values.confirmPassword}
             onChange={(event) =>
               updateValue("confirmPassword", event.target.value)

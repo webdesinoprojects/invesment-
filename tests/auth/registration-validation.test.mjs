@@ -69,3 +69,37 @@ test("registration rejects an invalid mobile for the selected country", () => {
     ]);
   }
 });
+
+test("registration accepts passwords without composition requirements", () => {
+  assert.equal(
+    registerSchema.safeParse({
+      ...validRegistration,
+      password: "123456",
+      confirmPassword: "123456",
+    }).success,
+    true,
+  );
+  assert.equal(
+    registerSchema.safeParse({
+      ...validRegistration,
+      password: "letters",
+      confirmPassword: "letters",
+    }).success,
+    true,
+  );
+});
+
+test("registration retains the provider-compatible minimum password length", () => {
+  const parsed = registerSchema.safeParse({
+    ...validRegistration,
+    password: "12345",
+    confirmPassword: "12345",
+  });
+
+  assert.equal(parsed.success, false);
+  if (!parsed.success) {
+    assert.deepEqual(parsed.error.flatten().fieldErrors.password, [
+      "Password must contain at least 6 characters.",
+    ]);
+  }
+});
