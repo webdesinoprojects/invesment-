@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify application
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nex_gen_power_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nex_gen_power_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      CI: true
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/nex_gen_power_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/nex_gen_power_test
+      NEXT_PUBLIC_SITE_URL: https://ci.example.com
+      NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder_1234567890
+      SUPABASE_SECRET_KEY: sb_secret_ci_placeholder_1234567890
+      PASSWORD_RECOVERY_SECRET: ci_password_recovery_secret_1234567890
+      CRON_SECRET: ci_cron_secret_12345678901234567890
+      INNGEST_EVENT_KEY: ci_inngest_event_key_placeholder
+      INNGEST_SIGNING_KEY: signkey-test-ci-placeholder-1234567890
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Clean generated build artifacts
+        run: npm run clean
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Validate Prisma schema
+        run: npm run db:validate
+
+      - name: Apply migrations to isolated test database
+        run: npm run db:deploy
+
+      - name: Lint
+        run: npm run lint -- --quiet
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build production application
+        run: npm run build
