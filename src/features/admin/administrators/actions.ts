@@ -35,7 +35,10 @@ export async function inviteAdministratorAction(
 
   const actor = await requireAdminPermission("administrators.manage");
   const supabase = createSupabaseAdminClient();
-  const redirectTo = `${getServerEnv().NEXT_PUBLIC_SITE_URL}/admin/login`;
+  const redirectTo = new URL(
+    "/admin/accept-invite",
+    getServerEnv().NEXT_PUBLIC_SITE_URL,
+  ).toString();
   const { data, error } = await supabase.auth.admin.inviteUserByEmail(parsed.data.email, {
     redirectTo,
   });

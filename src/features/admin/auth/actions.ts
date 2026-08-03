@@ -2,7 +2,6 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 
 import { getPrisma } from "@/lib/db/prisma";
 import {
@@ -17,13 +16,17 @@ import {
   isAdminLoginAllowed,
   recordAdminLoginFailure,
 } from "./login-rate-limit";
+import {
+  adminInviteAcceptanceSchema,
+  adminLoginSchema,
+} from "./schemas";
 
 export type AdminLoginState = { error?: string };
+export type AdminInviteAcceptanceState = {
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+};
 
-const schema = z.object({
-  email: z.email().trim().toLowerCase(),
-  password: z.string().min(8).max(200),
-});
 const GENERIC_LOGIN_ERROR = "Unable to sign in with those credentials.";
 
 export async function adminLoginAction(
@@ -38,7 +41,7 @@ export async function adminLoginAction(
     return { error: GENERIC_LOGIN_ERROR };
   }
 
-  const parsed = schema.safeParse({
+  const parsed = adminLoginSchema.safeParse({
     email: normalizedEmail,
     password: formData.get("password"),
   });
@@ -82,6 +85,66 @@ export async function adminLoginAction(
     }),
   ]);
   await clearAdminLoginThrottle(throttleKey);
+  redirect("/admin");
+}
+
+export async function acceptAdminInvitationAction(
+  _state: AdminInviteAcceptanceState,
+  formData: FormData,
+): Promise<AdminInviteAcceptanceState> {
+  const parsed = adminInviteAcceptanceSchema.safeParse({
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+  if (!parsed.success) {
+    return {
+      error: "Check the highlighted fields and try again.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const supabase = await createSupabaseServerClient("session");
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) {
+    return { error: "This invitation is invalid or has expired. Request a new invitation." };
+  }
+
+  const admin = await getPrisma().adminProfile.findUnique({
+    where: { authUserId: data.user.id },
+    select: { id: true, isActive: true },
+  });
+  if (!admin?.isActive) {
+    await supabase.auth.signOut();
+    return { error: "This administrator invitation is no longer active." };
+  }
+
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+  if (updateError) {
+    return { error: "The password could not be saved. Request a new invitation and try again." };
+  }
+
+  const requestHeaders = await headers();
+  const ipAddress = getClientIp(requestHeaders);
+  await setSessionPersistencePreference("session");
+  await getPrisma().$transaction([
+    getPrisma().adminProfile.update({
+      where: { id: admin.id },
+      data: { lastLoginAt: new Date() },
+    }),
+    getPrisma().auditLog.create({
+      data: {
+        actorAdminId: admin.id,
+        action: "ADMIN_INVITE_ACCEPT",
+        entityType: "AdminProfile",
+        entityId: admin.id,
+        ipAddress: ipAddress === "unknown" ? null : ipAddress.slice(0, 64),
+        userAgent: requestHeaders.get("user-agent")?.slice(0, 500) ?? null,
+      },
+    }),
+  ]);
+
   redirect("/admin");
 }
 

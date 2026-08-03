@@ -21,7 +21,7 @@ export function InviteAdministratorForm() {
     <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
       <h2 className="font-bold">Invite administrator</h2>
       <p className="mt-1 text-xs text-slate-500">
-        Invitation links return only to the configured NEX-GEN POWER admin login URL.
+        The recipient will use the emailed link to set a password before entering the admin console.
       </p>
       <form action={action} className="mt-4 grid gap-3 md:grid-cols-5">
         <input name="email" type="email" required placeholder="Email" className={inputClass} />

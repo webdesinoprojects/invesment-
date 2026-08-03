@@ -22,7 +22,9 @@ const protectedPrefixes = [
 ] as const;
 
 function isProtectedPath(pathname: string): boolean {
-  if (pathname === "/admin/login") return false;
+  if (pathname === "/admin/login" || pathname === "/admin/accept-invite") {
+    return false;
+  }
   return protectedPrefixes.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
