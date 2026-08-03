@@ -314,6 +314,60 @@ test("ROI preserves partial credits on retry and enforces the payout cap", { ski
   assert.equal(retried.failed, 0);
 });
 
+test("ROI completes at the 25-month boundary and never credits month 26", { skip: skipReason }, async () => {
+  const user = await createUser();
+  const investment = await prisma.investment.create({
+    data: {
+      userId: user.id,
+      amount: "100",
+      monthlyRoiPercent: "8",
+      durationMonths: 25,
+      payoutCapAmount: "200",
+      paidOutAmount: "25",
+      source: "ADMIN",
+      activatedAt: new Date("2078-11-10T00:00:00.000Z"),
+    },
+  });
+  const expiryRun = await createRun(new Date("2080-12-10T00:00:00.000Z"));
+  const expiry = await creditDailyRoi({
+    runId: expiryRun.id,
+    investmentId: investment.id,
+    creditDate: expiryRun.runDate,
+    dateKey: "2080-12-10",
+  });
+  const monthTwentySixRun = await createRun(new Date("2081-01-10T00:00:00.000Z"));
+  const monthTwentySix = await creditDailyRoi({
+    runId: monthTwentySixRun.id,
+    investmentId: investment.id,
+    creditDate: monthTwentySixRun.runDate,
+    dateKey: "2081-01-10",
+  });
+
+  const [completed, incomeCount, creditCount, unchangedUser] = await Promise.all([
+    prisma.investment.findUniqueOrThrow({ where: { id: investment.id } }),
+    prisma.incomeLedgerEntry.count({ where: { investmentId: investment.id } }),
+    prisma.roiCredit.count({ where: { investmentId: investment.id } }),
+    prisma.userProfile.findUniqueOrThrow({
+      where: { id: user.id },
+      select: {
+        status: true,
+        isReferralActive: true,
+        referralLink: { select: { isActive: true } },
+      },
+    }),
+  ]);
+
+  assert.deepEqual(expiry, { status: "COMPLETED" });
+  assert.deepEqual(monthTwentySix, { status: "COMPLETED" });
+  assert.equal(completed.status, "COMPLETED");
+  assert.equal(completed.paidOutAmount.toFixed(6), "25.000000");
+  assert.equal(incomeCount, 0);
+  assert.equal(creditCount, 0);
+  assert.equal(unchangedUser.status, "ACTIVE");
+  assert.equal(unchangedUser.isReferralActive, true);
+  assert.equal(unchangedUser.referralLink?.isActive, true);
+});
+
 test("competing investment transitions and stale setting writes cannot overwrite each other", { skip: skipReason }, async () => {
   const admin = await createAdmin();
   const user = await createUser();
