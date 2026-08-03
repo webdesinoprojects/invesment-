@@ -23,6 +23,7 @@ let reverseWalletEntry;
 let activateInvestment;
 let creditDailyRoi;
 let runDailyRoi;
+let createSystemSetting;
 let updateSystemSetting;
 let updateAdministratorLifecycle;
 
@@ -43,7 +44,7 @@ before(async () => {
   ({ activateInvestment } = await import("../../src/features/investment/services/activate-investment.ts"));
   ({ creditDailyRoi } = await import("../../src/features/roi/services/credit-daily-roi.ts"));
   ({ runDailyRoi } = await import("../../src/features/roi/services/run-daily-roi.ts"));
-  ({ updateSystemSetting } = await import("../../src/features/admin/settings/service.ts"));
+  ({ createSystemSetting, updateSystemSetting } = await import("../../src/features/admin/settings/service.ts"));
   ({ updateAdministratorLifecycle } = await import("../../src/features/admin/administrators/service.ts"));
   await prisma.adminLoginThrottle.findFirst();
 });
@@ -396,6 +397,33 @@ test("competing investment transitions and stale setting writes cannot overwrite
   ]);
   assert.equal(writes.filter((result) => result.ok).length, 1);
   assert.equal((await prisma.systemSetting.findUniqueOrThrow({ where: { key } })).version, 2);
+});
+
+test("fresh settings are initialized once with revision and audit history", { skip: skipReason }, async () => {
+  const admin = await createAdmin();
+  const key = `integration_setting_${randomUUID()}`;
+  trackedSettings.add(key);
+
+  const attempts = await Promise.all([
+    createSystemSetting({
+      key,
+      value: { enabled: true },
+      reason: "Initial production configuration",
+      adminId: admin.id,
+    }),
+    createSystemSetting({
+      key,
+      value: { enabled: false },
+      reason: "Competing initialization",
+      adminId: admin.id,
+    }),
+  ]);
+
+  assert.equal(attempts.filter((result) => result.ok).length, 1);
+  assert.equal(await prisma.systemSettingRevision.count({ where: { settingKey: key } }), 1);
+  assert.equal(await prisma.auditLog.count({
+    where: { action: "SYSTEM_SETTING_CREATE", entityId: key },
+  }), 1);
 });
 
 test("concurrent final-super-admin changes leave at least one active super administrator", { skip: skipReason }, async () => {

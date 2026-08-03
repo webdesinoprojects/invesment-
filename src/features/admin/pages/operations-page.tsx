@@ -8,6 +8,10 @@ import {
   InviteAdministratorForm,
 } from "../administrators/components";
 import { getSystemHealth } from "../health/get-system-health";
+import {
+  SettingCreator,
+  type RequiredSettingKey,
+} from "../settings/setting-creator";
 import { SettingEditor } from "../settings/setting-editor";
 import { adminDate } from "./format";
 import type { AdminPageContext } from "./page-context";
@@ -60,34 +64,53 @@ export async function renderSettingsPage(context: AdminPageContext) {
   await requireAdminPermission("settings.view");
   const data = await getPrisma().systemSetting.findMany({ orderBy: { key: "asc" } });
   const canManage = can(context.session.role, "settings.manage");
+  const configuredKeys = new Set(data.map((setting) => setting.key));
+  const missingKeys = ([
+    "investment_configuration",
+    "withdrawal_configuration",
+    "deposit_configuration",
+  ] satisfies RequiredSettingKey[]).filter((key) => !configuredKeys.has(key));
   return (
-    <Listing
-      title="System settings"
-      description="Strictly validated, versioned operational configuration."
-      headers={["Key", "Value", "Version", "Description", "Updated", "Actions"]}
-      rows={data.map((setting) => ({
-        cells: [
-          setting.key,
-          JSON.stringify(setting.value),
-          setting.version,
-          setting.description ?? "—",
-          adminDate(setting.updatedAt),
-        ],
-        action:
-          canManage &&
-          ["investment_configuration", "withdrawal_configuration", "deposit_configuration"].includes(
+    <>
+      {canManage && missingKeys.length ? (
+        <section className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h2 className="text-sm font-bold text-amber-950">Required configuration is missing</h2>
+          <p className="mt-1 text-xs text-amber-800">
+            Initialize each missing setting before accepting live financial operations.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {missingKeys.map((key) => <SettingCreator key={key} settingKey={key} />)}
+          </div>
+        </section>
+      ) : null}
+      <Listing
+        title="System settings"
+        description="Strictly validated, versioned operational configuration."
+        headers={["Key", "Value", "Version", "Description", "Updated", "Actions"]}
+        rows={data.map((setting) => ({
+          cells: [
             setting.key,
-          ) ? (
-            <SettingEditor
-              settingKey={setting.key}
-              value={JSON.stringify(setting.value, null, 2)}
-              version={setting.version}
-            />
-          ) : (
-            <span className="text-xs text-slate-400">Read only</span>
-          ),
-      }))}
-    />
+            JSON.stringify(setting.value),
+            setting.version,
+            setting.description ?? "—",
+            adminDate(setting.updatedAt),
+          ],
+          action:
+            canManage &&
+            ["investment_configuration", "withdrawal_configuration", "deposit_configuration"].includes(
+              setting.key,
+            ) ? (
+              <SettingEditor
+                settingKey={setting.key}
+                value={JSON.stringify(setting.value, null, 2)}
+                version={setting.version}
+              />
+            ) : (
+              <span className="text-xs text-slate-400">Read only</span>
+            ),
+        }))}
+      />
+    </>
   );
 }
 

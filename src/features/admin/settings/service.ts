@@ -4,6 +4,53 @@ import { Prisma } from "@/generated/prisma/client";
 
 import { runSerializable } from "../shared/transaction";
 
+const settingDescriptions: Record<string, string> = {
+  investment_configuration: "Runtime investment, ROI, and referral commission rules.",
+  withdrawal_configuration: "Withdrawal limits and permitted India calendar days.",
+  deposit_configuration: "USDT BEP-20 deposit wallet and minimum deposit rules.",
+};
+
+export async function createSystemSetting(input: {
+  key: string;
+  value: Prisma.InputJsonValue;
+  reason: string;
+  adminId: string;
+}) {
+  return runSerializable(async (tx) => {
+    const current = await tx.systemSetting.findUnique({ where: { key: input.key } });
+    if (current) return { ok: false as const, code: "EXISTS" as const };
+
+    await tx.systemSetting.create({
+      data: {
+        key: input.key,
+        value: input.value,
+        description: settingDescriptions[input.key] ?? null,
+        updatedByAdminId: input.adminId,
+      },
+    });
+    await tx.systemSettingRevision.create({
+      data: {
+        settingKey: input.key,
+        version: 1,
+        nextValue: input.value,
+        reason: input.reason,
+        changedByAdminId: input.adminId,
+      },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorAdminId: input.adminId,
+        action: "SYSTEM_SETTING_CREATE",
+        entityType: "SystemSetting",
+        entityId: input.key,
+        after: { version: 1 },
+        reason: input.reason,
+      },
+    });
+    return { ok: true as const, version: 1 };
+  });
+}
+
 export async function updateSystemSetting(input: {
   key: string;
   value: Prisma.InputJsonValue;
