@@ -26,6 +26,8 @@ let runDailyRoi;
 let createSystemSetting;
 let updateSystemSetting;
 let updateAdministratorLifecycle;
+let prepareMemberDeletion;
+let finalizeMemberDeletion;
 
 const trackedUsers = new Set();
 const trackedAdmins = new Set();
@@ -46,6 +48,7 @@ before(async () => {
   ({ runDailyRoi } = await import("../../src/features/roi/services/run-daily-roi.ts"));
   ({ createSystemSetting, updateSystemSetting } = await import("../../src/features/admin/settings/service.ts"));
   ({ updateAdministratorLifecycle } = await import("../../src/features/admin/administrators/service.ts"));
+  ({ prepareMemberDeletion, finalizeMemberDeletion } = await import("../../src/features/admin/members/services/delete-member.ts"));
   await prisma.adminLoginThrottle.findFirst();
 });
 
@@ -458,6 +461,46 @@ test("concurrent final-super-admin changes leave at least one active super admin
     results.filter((result) => result.ok).length,
     baselineActiveSuperAdmins === 0 ? 1 : 2,
   );
+});
+
+test("member deletion removes unused profiles but protects financial records", { skip: skipReason }, async () => {
+  const admin = await createAdmin();
+  const unused = await createUser();
+  const deletionInput = {
+    id: unused.id,
+    memberId: unused.memberId,
+    confirmation: unused.memberId,
+    reason: "Duplicate unused registration",
+    confirmed: "true",
+    adminId: admin.id,
+  };
+  const prepared = await prepareMemberDeletion(deletionInput);
+  assert.equal(prepared.ok, true);
+  if (!prepared.ok) return;
+  const deleted = await finalizeMemberDeletion({
+    id: prepared.member.id,
+    authUserId: prepared.member.authUserId,
+    memberId: prepared.member.memberId,
+    adminId: admin.id,
+    reason: deletionInput.reason,
+  });
+  assert.equal(deleted.ok, true);
+  assert.equal(await prisma.userProfile.findUnique({ where: { id: unused.id } }), null);
+  assert.equal(await prisma.auditLog.count({
+    where: { action: "MEMBER_DELETE", entityId: unused.id, actorAdminId: admin.id },
+  }), 1);
+
+  const funded = await createUser();
+  await seedBalance(funded.id, "25");
+  const protectedResult = await prepareMemberDeletion({
+    ...deletionInput,
+    id: funded.id,
+    memberId: funded.memberId,
+    confirmation: funded.memberId,
+  });
+  assert.equal(protectedResult.ok, false);
+  if (!protectedResult.ok) assert.equal(protectedResult.code, "PROTECTED");
+  assert.equal(await prisma.userProfile.findUnique({ where: { id: funded.id } }) !== null, true);
 });
 
 async function createAdmin() {

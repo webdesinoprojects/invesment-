@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { reviewDepositSchema } from "../../src/features/admin/deposits/schemas/review-deposit.ts";
 import { transitionWithdrawalSchema } from "../../src/features/admin/withdrawals/schemas/transition-withdrawal.ts";
 import { changeMemberStatusSchema } from "../../src/features/admin/members/schemas/change-member-status.ts";
+import { deleteMemberSchema } from "../../src/features/admin/members/schemas/delete-member.ts";
 import { transitionInvestmentSchema } from "../../src/features/admin/investments/schemas/transition-investment.ts";
 import { manualActivationSchema } from "../../src/features/admin/investments/schemas/manual-activation.ts";
 import { can } from "../../src/features/admin/permissions.ts";
@@ -40,6 +41,25 @@ test("blocking and exceptional investment states require reasons", () => {
   assert.equal(changeMemberStatusSchema.safeParse({ id, status: "BLOCKED", reason: "" }).success, false);
   assert.equal(transitionInvestmentSchema.safeParse({ id, expectedStatus: "ACTIVE", status: "CANCELLED", reason: "" }).success, false);
   assert.equal(transitionInvestmentSchema.safeParse({ id, expectedStatus: "ACTIVE", status: "PAUSED", reason: "Compliance review", confirmed: "true" }).success, true);
+});
+
+test("member deletion requires the exact member ID and explicit confirmation", () => {
+  const base = {
+    id,
+    memberId: "NP123456",
+    confirmation: "NP123456",
+    reason: "Duplicate unused registration",
+    confirmed: "true",
+  };
+  assert.equal(deleteMemberSchema.safeParse(base).success, true);
+  assert.equal(
+    deleteMemberSchema.safeParse({ ...base, confirmation: "NP654321" }).success,
+    false,
+  );
+  assert.equal(
+    deleteMemberSchema.safeParse({ ...base, confirmed: undefined }).success,
+    false,
+  );
 });
 
 test("shared configuration schemas reject invalid financial settings", () => {

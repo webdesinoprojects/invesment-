@@ -11,10 +11,12 @@ import {
   requestMemberPasswordResetAction,
   updateMemberProfileAction,
 } from "../actions/member-administration";
+import { DeleteMemberControl } from "./delete-member-control";
 
 type MemberAdministrationProps = {
   member: {
     id: string;
+    memberId: string;
     fullName: string;
     mobile: string;
     countryCode: string;
@@ -172,6 +174,11 @@ export function MemberAdministration({
               </div>
               <Feedback state={pinState} />
             </div>
+            <DeleteMemberControl
+              id={member.id}
+              memberId={member.memberId}
+              fullName={member.fullName}
+            />
           </>
         ) : null}
       </div>
