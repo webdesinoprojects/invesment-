@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { ArrowUpFromLine } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -15,13 +15,8 @@ export function WalletBalanceCard({ balance }: { balance: string }) {
           {formatUsd(balance)}
         </p>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:w-72">
-        <Button asChild className="h-10 bg-amber-400 text-black hover:bg-amber-300">
-          <Link href="/deposit">
-            <ArrowDownToLine aria-hidden="true" />
-            Deposit
-          </Link>
-        </Button>
+      <div className="sm:w-36">
+        {/* User deposits are currently administered by staff only. */}
         <Button asChild variant="secondary" className="h-10">
           <Link href="/withdraw">
             <ArrowUpFromLine aria-hidden="true" />

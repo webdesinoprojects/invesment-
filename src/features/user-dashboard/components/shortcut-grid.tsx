@@ -4,7 +4,6 @@ import {
   CircleDollarSign,
   Landmark,
   UserRoundSearch,
-  WalletCards,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -12,7 +11,7 @@ const shortcuts = [
   { href: "/invest", label: "Invest", icon: Landmark },
   { href: "/team", label: "Team", icon: UserRoundSearch },
   { href: "/earnings", label: "Earnings", icon: ChartNoAxesColumn },
-  { href: "/deposit", label: "Deposit", icon: WalletCards },
+  // User deposits are currently administered by staff only.
   { href: "/withdraw", label: "Withdraw", icon: CircleDollarSign },
   { href: "/earnings?tab=rank", label: "Rewards", icon: BadgeDollarSign },
 ] as const;
