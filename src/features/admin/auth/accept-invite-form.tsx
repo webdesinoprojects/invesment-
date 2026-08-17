@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { LoaderCircle, LockKeyhole } from "lucide-react";
 import Link from "next/link";
 
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createSupabaseAdminBrowserClient } from "@/lib/supabase/browser";
 
 import {
   acceptAdminInvitationAction,
@@ -27,7 +27,7 @@ export function AcceptAdminInviteForm() {
 
     async function establishInviteSession() {
       try {
-        const supabase = createSupabaseBrowserClient();
+        const supabase = createSupabaseAdminBrowserClient();
         const fragment = new URLSearchParams(window.location.hash.slice(1));
         const accessToken = fragment.get("access_token");
         const refreshToken = fragment.get("refresh_token");

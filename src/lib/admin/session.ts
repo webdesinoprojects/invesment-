@@ -3,10 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import type { AdminRole } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/db/prisma";
-import {
-  clearSessionPersistencePreference,
-  createSupabaseServerClient,
-} from "@/lib/supabase/server";
+import { createSupabaseAdminServerClient } from "@/lib/supabase/server";
 
 export type AdminSession = {
   adminId: string;
@@ -18,7 +15,7 @@ export type AdminSession = {
 };
 
 export async function getAdminSession(): Promise<AdminSession | null> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseAdminServerClient();
   const { data, error } = await supabase.auth.getClaims();
   const authUserId = data?.claims?.sub;
   if (error || !authUserId) return null;
@@ -45,7 +42,6 @@ export async function requireAdmin(roles?: AdminRole[]) {
 }
 
 export async function signOutAdmin() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseAdminServerClient();
   await supabase.auth.signOut();
-  await clearSessionPersistencePreference();
 }

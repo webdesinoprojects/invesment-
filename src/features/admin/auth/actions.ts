@@ -4,10 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getPrisma } from "@/lib/db/prisma";
-import {
-  createSupabaseServerClient,
-  setSessionPersistencePreference,
-} from "@/lib/supabase/server";
+import { createSupabaseAdminServerClient } from "@/lib/supabase/server";
 import { getAdminSession, signOutAdmin } from "@/lib/admin/session";
 
 import {
@@ -50,7 +47,7 @@ export async function adminLoginAction(
     return { error: GENERIC_LOGIN_ERROR };
   }
 
-  const supabase = await createSupabaseServerClient("session");
+  const supabase = await createSupabaseAdminServerClient();
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error || !data.user) {
     await recordAdminLoginFailure({ key: throttleKey, ipAddress });
@@ -67,7 +64,6 @@ export async function adminLoginAction(
     return { error: GENERIC_LOGIN_ERROR };
   }
 
-  await setSessionPersistencePreference("session");
   await getPrisma().$transaction([
     getPrisma().adminProfile.update({
       where: { id: admin.id },
@@ -103,7 +99,7 @@ export async function acceptAdminInvitationAction(
     };
   }
 
-  const supabase = await createSupabaseServerClient("session");
+  const supabase = await createSupabaseAdminServerClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) {
     return { error: "This invitation is invalid or has expired. Request a new invitation." };
@@ -127,7 +123,6 @@ export async function acceptAdminInvitationAction(
 
   const requestHeaders = await headers();
   const ipAddress = getClientIp(requestHeaders);
-  await setSessionPersistencePreference("session");
   await getPrisma().$transaction([
     getPrisma().adminProfile.update({
       where: { id: admin.id },

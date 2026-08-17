@@ -6,6 +6,10 @@ import {
   parseSessionPersistence,
   SESSION_PERSISTENCE_COOKIE,
 } from "@/lib/auth/session-persistence";
+import {
+  ADMIN_AUTH_COOKIE_NAME,
+  getAuthScopeForPath,
+} from "@/lib/supabase/auth-scope";
 
 const protectedPrefixes = [
   "/dashboard",
@@ -42,10 +46,17 @@ export async function updateSession(request: NextRequest) {
   }
 
   let response = NextResponse.next({ request });
-  const persistence = parseSessionPersistence(
-    request.cookies.get(SESSION_PERSISTENCE_COOKIE)?.value,
-  );
+  const authScope = getAuthScopeForPath(request.nextUrl.pathname);
+  const persistence =
+    authScope === "admin"
+      ? "session"
+      : parseSessionPersistence(
+          request.cookies.get(SESSION_PERSISTENCE_COOKIE)?.value,
+        );
   const supabase = createServerClient(supabaseUrl, publishableKey, {
+    ...(authScope === "admin"
+      ? { cookieOptions: { name: ADMIN_AUTH_COOKIE_NAME } }
+      : {}),
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet, headersToSet) {
