@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { registerAction } from "@/features/auth/actions/register";
 import { countries } from "@/features/auth/constants/countries";
-import type { SponsorPreview } from "@/features/auth/queries/get-sponsor-preview";
 import type {
   RegistrationReceiptData,
   RegistrationSecrets,
@@ -43,14 +42,18 @@ type RegisterFormValues = {
   securityPin: string;
 };
 
-export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
+export function RegisterForm({
+  initialInviteId,
+  initialReferrerName,
+}: {
+  initialInviteId: string;
+  initialReferrerName: string;
+}) {
   const [state, action] = useActionState(registerAction, initialRegisterState);
   const [submittedSecrets, setSubmittedSecrets] =
     useState<RegistrationSecrets | null>(null);
-  const inviteId = sponsor.state === "found" ? sponsor.memberId : "";
-  const referrerName = sponsor.state === "found" ? sponsor.fullName : "";
   const [values, setValues] = useState<RegisterFormValues>({
-    inviteId,
+    inviteId: initialInviteId,
     fullName: "",
     email: "",
     countryCode: "IN",
@@ -93,7 +96,7 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
             name="inviteId"
             value={values.inviteId}
             onChange={(event) => updateValue("inviteId", event.target.value)}
-            readOnly={Boolean(inviteId)}
+            readOnly={Boolean(initialInviteId)}
             placeholder="Leave blank without a sponsor"
             aria-invalid={Boolean(state.fieldErrors?.inviteId)}
             className="h-11 uppercase"
@@ -104,7 +107,7 @@ export function RegisterForm({ sponsor }: { sponsor: SponsorPreview }) {
           <Label htmlFor="referrerName">Referrer name</Label>
           <Input
             id="referrerName"
-            value={referrerName}
+            value={initialReferrerName}
             readOnly
             placeholder="No sponsor selected"
             className="h-11"

@@ -15,6 +15,10 @@ export default async function RegisterPage({
 }) {
   const { ref } = await searchParams;
   const sponsor = await getSponsorPreview(ref);
+  const initialInviteId =
+    sponsor.state === "found" ? String(sponsor.memberId) : "";
+  const initialReferrerName =
+    sponsor.state === "found" ? String(sponsor.fullName) : "";
 
   return (
     <AuthShell
@@ -38,7 +42,11 @@ export default async function RegisterPage({
           This referral link is not valid. You can still register without a sponsor.
         </p>
       )}
-      <RegisterForm sponsor={sponsor} />
+      <RegisterForm
+        key={initialInviteId || "independent"}
+        initialInviteId={initialInviteId}
+        initialReferrerName={initialReferrerName}
+      />
     </AuthShell>
   );
 }
