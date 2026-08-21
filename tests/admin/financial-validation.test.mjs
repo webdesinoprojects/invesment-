@@ -6,6 +6,7 @@ import { changeMemberStatusSchema } from "../../src/features/admin/members/schem
 import { deleteMemberSchema } from "../../src/features/admin/members/schemas/delete-member.ts";
 import { transitionInvestmentSchema } from "../../src/features/admin/investments/schemas/transition-investment.ts";
 import { manualActivationSchema } from "../../src/features/admin/investments/schemas/manual-activation.ts";
+import { walletAdjustmentSchema } from "../../src/features/admin/wallet/schemas/wallet-operation.ts";
 import { remainingCommissionPeriods } from "../../src/features/referral/services/commission-schedules.ts";
 import { can } from "../../src/features/admin/permissions.ts";
 import {
@@ -23,6 +24,7 @@ const id = "00000000-0000-4000-8000-000000000000";
 
 test("deposit decision rejects unknown values", () => {
   assert.equal(reviewDepositSchema.safeParse({ id, decision: "OTHER", reason: "" }).success, false);
+  assert.equal(reviewDepositSchema.safeParse({ id, decision: "APPROVE", reason: "Verified", confirmed: "true" }).success, false);
 });
 test("deposit rejection requires a reason", () => {
   assert.equal(reviewDepositSchema.safeParse({ id, decision: "REJECT", reason: "" }).success, false);
@@ -102,6 +104,24 @@ test("manual investment credit requires an exact user UUID without redundant con
     ...base,
     userId: "topa singh",
   }).success, false);
+});
+
+test("admin wallet adjustments cannot credit principal as available earnings", () => {
+  const base = {
+    userId: id,
+    amount: "10000",
+    reason: "Accounting correction",
+    idempotencyKey: "10000000-0000-4000-8000-000000000000",
+    confirmed: "true",
+  };
+  assert.equal(
+    walletAdjustmentSchema.safeParse({ ...base, operation: "CREDIT" }).success,
+    false,
+  );
+  assert.equal(
+    walletAdjustmentSchema.safeParse({ ...base, operation: "DEBIT" }).success,
+    true,
+  );
 });
 
 test("monthly commissions cannot extend beyond the source investment term", () => {

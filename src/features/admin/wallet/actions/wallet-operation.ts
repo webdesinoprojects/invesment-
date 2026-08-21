@@ -26,7 +26,7 @@ export async function adjustWalletAction(
     return {
       ok: false,
       code: "VALIDATION",
-      message: "Check the wallet adjustment, reason and explicit confirmation.",
+      message: "Check the earnings debit, reason and explicit confirmation.",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -38,7 +38,7 @@ export async function adjustWalletAction(
     return {
       ok: true,
       data: { nextIdempotencyKey: randomUUID() },
-      message: `Wallet adjusted. New balance: ${result.balanceAfter} USDT.`,
+      message: `Earnings adjusted. New available balance: ${result.balanceAfter} USDT.`,
     };
   } catch {
     return { ok: false, code: "FAILED", message: "Wallet adjustment failed safely." };
@@ -77,6 +77,8 @@ function walletFailure(code: string): Extract<AdminActionResult<WalletActionData
     NOT_FOUND: "The member or ledger entry was not found.",
     INSUFFICIENT_FUNDS: "The wallet has insufficient balance for this operation.",
     DUPLICATE_REQUEST: "This operation was already submitted.",
+    CREDIT_REQUIRES_INVESTMENT:
+      "Positive administrator credits must be posted as active investments.",
     NOT_REVERSIBLE: "Only unreversed administrator adjustments are eligible for reversal.",
     ALREADY_REVERSED: "This adjustment has already been reversed.",
   };

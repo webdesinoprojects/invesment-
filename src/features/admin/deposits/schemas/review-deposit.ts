@@ -2,11 +2,11 @@ import { z } from "zod";
 
 export const reviewDepositSchema = z.object({
   id: z.uuid(),
-  decision: z.enum(["APPROVE", "REJECT"]),
+  decision: z.literal("REJECT"),
   reason: z.string().trim().max(500).default(""),
   confirmed: z.literal("true"),
 }).superRefine((value, context) => {
-  if (value.decision === "REJECT" && value.reason.length < 3) {
+  if (value.reason.length < 3) {
     context.addIssue({ code: "custom", path: ["reason"], message: "A rejection reason is required." });
   }
 });

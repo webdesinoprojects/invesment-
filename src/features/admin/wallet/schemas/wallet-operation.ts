@@ -5,7 +5,7 @@ import { positiveMoneySchema } from "@/features/settings/schemas/configuration";
 export const walletAdjustmentSchema = z
   .object({
     userId: z.uuid(),
-    operation: z.enum(["CREDIT", "DEBIT"]),
+    operation: z.literal("DEBIT"),
     amount: positiveMoneySchema,
     reason: z.string().trim().min(3).max(500),
     idempotencyKey: z.uuid(),

@@ -134,7 +134,11 @@ export async function manualActivationAction(
               : "Investment credit could not be completed.",
       };
     }
-    revalidatePath("/admin");
+    revalidatePath("/admin", "layout");
+    revalidatePath("/dashboard");
+    revalidatePath("/assets");
+    revalidatePath("/earnings");
+    revalidatePath("/team");
     return {
       ok: true,
       data: { nextRequestToken: randomUUID() },

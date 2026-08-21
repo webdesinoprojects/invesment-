@@ -16,6 +16,7 @@ type WalletOperationResult =
         | "NOT_FOUND"
         | "INSUFFICIENT_FUNDS"
         | "DUPLICATE_REQUEST"
+        | "CREDIT_REQUIRES_INVESTMENT"
         | "NOT_REVERSIBLE"
         | "ALREADY_REVERSED";
     };
@@ -23,6 +24,9 @@ type WalletOperationResult =
 export async function adjustWallet(
   input: WalletAdjustmentInput & { adminId: string },
 ): Promise<WalletOperationResult> {
+  if (input.operation !== "DEBIT") {
+    return { ok: false, code: "CREDIT_REQUIRES_INVESTMENT" };
+  }
   try {
     return await runSerializable(async (tx) => {
       const duplicate = await tx.walletLedgerEntry.findUnique({
@@ -46,10 +50,7 @@ export async function adjustWallet(
       if (input.operation === "DEBIT" && amount.greaterThan(currentBalance)) {
         return { ok: false as const, code: "INSUFFICIENT_FUNDS" as const };
       }
-      const balanceAfter =
-        input.operation === "CREDIT"
-          ? currentBalance.plus(amount)
-          : currentBalance.minus(amount);
+      const balanceAfter = currentBalance.minus(amount);
       const entry = await tx.walletLedgerEntry.create({
         data: {
           userId: member.id,
@@ -59,7 +60,7 @@ export async function adjustWallet(
           balanceAfter,
           referenceType: "AdminAdjustment",
           idempotencyKey: `admin-adjustment:${input.idempotencyKey}`,
-          description: `Administrator ${input.operation.toLowerCase()} adjustment.`,
+          description: "Administrator earnings debit adjustment.",
           metadata: { reason: input.reason },
           createdByAdminId: input.adminId,
         },

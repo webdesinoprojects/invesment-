@@ -87,7 +87,7 @@ after(async () => {
   await prisma.$disconnect();
 });
 
-test("concurrent deposit approvals preserve exact wallet balance and duplicate decisions credit once", { skip: skipReason }, async () => {
+test("legacy deposit requests can only be rejected and never credit earnings", { skip: skipReason }, async () => {
   const admin = await createAdmin();
   const user = await createUser();
   await seedBalance(user.id, "100");
@@ -97,19 +97,22 @@ test("concurrent deposit approvals preserve exact wallet balance and duplicate d
   const second = await prisma.depositRequest.create({
     data: { userId: user.id, amount: "20", transactionHash: hashFor(2) },
   });
-  const approvals = await Promise.all([
-    reviewDeposit({ id: first.id, decision: "APPROVE", reason: "Verified", confirmed: "true", adminId: admin.id }),
-    reviewDeposit({ id: second.id, decision: "APPROVE", reason: "Verified", confirmed: "true", adminId: admin.id }),
+  const rejections = await Promise.all([
+    reviewDeposit({ id: first.id, decision: "REJECT", reason: "Use investment credit", confirmed: "true", adminId: admin.id }),
+    reviewDeposit({ id: second.id, decision: "REJECT", reason: "Use investment credit", confirmed: "true", adminId: admin.id }),
   ]);
-  assert.equal(approvals.every((result) => result.ok), true);
-  assert.equal((await latestBalance(user.id)).toFixed(6), "130.000000");
+  assert.equal(rejections.every((result) => result.ok), true);
+  assert.equal((await latestBalance(user.id)).toFixed(6), "100.000000");
+  assert.equal(await prisma.depositRequest.count({
+    where: { id: { in: [first.id, second.id] }, status: "REJECTED" },
+  }), 2);
 
   const duplicate = await prisma.depositRequest.create({
     data: { userId: user.id, amount: "5", transactionHash: hashFor(3) },
   });
   const decisions = await Promise.all([
-    reviewDeposit({ id: duplicate.id, decision: "APPROVE", reason: "Verified", confirmed: "true", adminId: admin.id }),
-    reviewDeposit({ id: duplicate.id, decision: "APPROVE", reason: "Verified", confirmed: "true", adminId: admin.id }),
+    reviewDeposit({ id: duplicate.id, decision: "REJECT", reason: "Use investment credit", confirmed: "true", adminId: admin.id }),
+    reviewDeposit({ id: duplicate.id, decision: "REJECT", reason: "Use investment credit", confirmed: "true", adminId: admin.id }),
   ]);
   assert.equal(decisions.filter((result) => result.ok).length, 1);
   assert.equal(await prisma.walletLedgerEntry.count({
@@ -178,19 +181,19 @@ test("concurrent adjustments keep an exact balance and a reversal can post only 
   assert.equal(results.every((result) => result.ok), true);
   assert.equal((await latestBalance(user.id)).toFixed(6), "20.000000");
 
-  const credit = await adjustWallet({
+  const debit = await adjustWallet({
     userId: user.id,
-    operation: "CREDIT",
+    operation: "DEBIT",
     amount: "15",
     reason: "Reversible correction",
     idempotencyKey: randomUUID(),
     confirmed: "true",
     adminId: admin.id,
   });
-  assert.equal(credit.ok, true);
+  assert.equal(debit.ok, true);
   const reversals = await Promise.all([
-    reverseWalletEntry({ entryId: credit.entryId, reason: "Undo correction", idempotencyKey: randomUUID(), confirmed: "true", adminId: admin.id }),
-    reverseWalletEntry({ entryId: credit.entryId, reason: "Undo correction", idempotencyKey: randomUUID(), confirmed: "true", adminId: admin.id }),
+    reverseWalletEntry({ entryId: debit.entryId, reason: "Undo correction", idempotencyKey: randomUUID(), confirmed: "true", adminId: admin.id }),
+    reverseWalletEntry({ entryId: debit.entryId, reason: "Undo correction", idempotencyKey: randomUUID(), confirmed: "true", adminId: admin.id }),
   ]);
   assert.equal(reversals.filter((result) => result.ok).length, 1);
 });
@@ -211,6 +214,8 @@ test("manual activation targets the exact UUID when names duplicate and rejects 
   assert.equal(activated.ok, true);
   assert.equal(await prisma.investment.count({ where: { userId: first.id } }), 0);
   assert.equal(await prisma.investment.count({ where: { userId: second.id } }), 1);
+  assert.equal(await prisma.walletLedgerEntry.count({ where: { userId: second.id } }), 0,
+    "investment principal must not become withdrawable earnings");
   const repeat = await activateInvestment({
     targetUserId: second.id,
     amount: "10",

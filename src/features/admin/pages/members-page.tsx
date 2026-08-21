@@ -1,14 +1,16 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AdminListing as Listing } from "@/components/admin/admin-listing";
 import { can } from "@/features/admin/permissions";
+import { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/db/prisma";
 import { requireAdminPermission } from "@/server/permissions/admin-permissions";
 
 import { MemberAdministration } from "../members/components/member-administration";
 import { MemberStatusControls } from "../members/components/member-status-controls";
-import { WalletAdjustmentForm } from "../wallet/components/wallet-operation-controls";
+import { MemberInvestmentCreditForm } from "../investments/components/member-investment-credit-form";
 import { adminDate, adminMoney } from "./format";
 import type { AdminPageContext } from "./page-context";
 
@@ -97,7 +99,13 @@ export async function renderMembersPage(context: AdminPageContext) {
             })
           : Promise.resolve([]),
       ]);
-    const balance = wallet[0]?.balanceAfter.toFixed(6) ?? "0.000000";
+    const activeInvestment = investments
+      .filter((investment) => investment.status === "ACTIVE")
+      .reduce(
+        (total, investment) => total.plus(investment.amount),
+        new Prisma.Decimal(0),
+      )
+      .toFixed(6);
 
     return (
       <div className="space-y-6">
@@ -127,11 +135,12 @@ export async function renderMembersPage(context: AdminPageContext) {
           canManage={canManage}
           canManageCredentials={canManageCredentials}
         />
-        {can(context.session.role, "wallet.adjust") ? (
-          <WalletAdjustmentForm
+        {can(context.session.role, "investments.manual") ? (
+          <MemberInvestmentCreditForm
             userId={member.id}
             member={`${member.fullName} · ${member.memberId}`}
-            balance={balance}
+            activeInvestment={activeInvestment}
+            initialRequestToken={randomUUID()}
           />
         ) : null}
         <Listing

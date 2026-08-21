@@ -14,7 +14,7 @@ export async function reviewDepositAction(_state: AdminActionResult, formData: F
     const result = await reviewDeposit({ ...parsed.data, adminId: admin.adminId });
     if (!result.ok) return { ok: false, code: result.code, message: result.code === "NOT_FOUND" ? "Deposit request not found." : "This deposit was already reviewed." };
     revalidatePath("/admin");
-    return { ok: true, data: undefined, message: parsed.data.decision === "APPROVE" ? "Deposit approved and wallet credited." : "Deposit rejected." };
+    return { ok: true, data: undefined, message: "Legacy deposit request rejected." };
   } catch {
     return { ok: false, code: "FAILED", message: "The deposit review could not be completed." };
   }
