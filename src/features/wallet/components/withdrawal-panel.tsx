@@ -9,12 +9,14 @@ export function WithdrawalPanel({
   availableBalance,
   walletAddress,
   minimumAmount,
+  feePercent,
   isOpen,
   requestToken,
 }: {
   availableBalance: string;
   walletAddress: string | null;
   minimumAmount: string | null;
+  feePercent: string | null;
   isOpen: boolean;
   requestToken: string;
 }) {
@@ -22,7 +24,7 @@ export function WithdrawalPanel({
     ? "Withdrawal settings are unavailable."
     : !isOpen
       ? "The withdrawal window is currently closed."
-      : "Add your BEP-20 wallet address before requesting a withdrawal.";
+      : "Add your UPI ID or payout details before requesting a withdrawal.";
 
   return (
     <div className="grid gap-5 lg:grid-cols-[20rem_1fr]">
@@ -44,6 +46,7 @@ export function WithdrawalPanel({
           <WithdrawalRequestForm
             walletAddress={walletAddress}
             minimumAmount={minimumAmount}
+            feePercent={feePercent ?? "0"}
             requestToken={requestToken}
           />
         ) : (

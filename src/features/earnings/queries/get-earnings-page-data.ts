@@ -6,11 +6,11 @@ import { getPrisma } from "@/lib/db/prisma";
 
 const PAGE_SIZE = 20;
 
-const typeByTab: Record<EarningsTab, IncomeType> = {
-  roi: "DAILY_ROI",
-  referral: "DIRECT_REFERRAL",
-  level: "LEVEL_INCOME",
-  rank: "RANK_REWARD",
+const typesByTab: Record<EarningsTab, IncomeType[]> = {
+  roi: ["DAILY_ROI"],
+  referral: ["DIRECT_REFERRAL", "DIRECT_REFERRAL_BONUS", "MONTHLY_DIRECT"],
+  level: ["LEVEL_INCOME", "MONTHLY_LEVEL"],
+  rank: ["RANK_REWARD"],
 };
 
 export async function getEarningsPageData({
@@ -23,7 +23,7 @@ export async function getEarningsPageData({
   requestedPage: number;
 }): Promise<EarningsPageData> {
   const db = getPrisma();
-  const where = { userId, type: typeByTab[tab], status: "CREDITED" as const };
+  const where = { userId, type: { in: typesByTab[tab] }, status: "CREDITED" as const };
   const [aggregate, totalRows] = await Promise.all([
     db.incomeLedgerEntry.aggregate({ where, _sum: { amount: true } }),
     db.incomeLedgerEntry.count({ where }),

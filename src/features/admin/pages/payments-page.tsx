@@ -125,12 +125,13 @@ export async function renderWithdrawalsPage(context: AdminPageContext) {
             : "Withdrawal history"
       }
       description="Manage the payout queue and manual payment lifecycle."
-      headers={["Member", "Amount", "Net", "Wallet", "Status", "Submitted", "Actions"]}
+      headers={["Member", "Gross", "Fee", "Member payout", "Payout details", "Status", "Submitted", "Actions"]}
       rows={data.slice(0, context.pageSize).map((request) => ({
         id: request.id,
         cells: [
           `${request.user.fullName} · ${request.user.memberId}`,
           adminMoney(request.amount),
+          adminMoney(request.feeAmount),
           adminMoney(request.netAmount),
           request.walletAddress,
           request.status,

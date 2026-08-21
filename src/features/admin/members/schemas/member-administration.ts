@@ -10,7 +10,10 @@ export const updateMemberProfileSchema = z
     mobile: z.string().trim().regex(/^\+?[0-9 ()-]{7,24}$/),
     countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),
     bep20WalletAddress: z
-      .union([z.literal(""), z.string().trim().regex(/^0x[a-fA-F0-9]{40}$/)])
+      .string()
+      .trim()
+      .max(64)
+      .refine((value) => value === "" || value.length >= 3, "Enter a valid UPI ID or payout detail.")
       .transform((value) => value || null),
     reason,
     confirmed: z.literal("true"),

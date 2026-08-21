@@ -43,7 +43,7 @@ export function RequestHistoryTable({
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>{tab === "deposit" ? "Transaction" : "Wallet / payment"}</TableHead>
+                <TableHead>{tab === "deposit" ? "Transaction" : "Payout details / reference"}</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>

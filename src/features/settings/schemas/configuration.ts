@@ -27,9 +27,11 @@ export const investmentConfigurationSchema = z
     ),
     monthlyRoiPercent: percentageSchema,
     durationMonths: z.number().int().min(1).max(120),
-    directCommissionPercent: percentageSchema,
-    levelCommissionPercent: percentageSchema,
-    maxLevelDepth: z.number().int().min(1).max(5),
+    directBonusPercent: percentageSchema,
+    directMonthlyPercent: percentageSchema,
+    levelMonthlyPercent: percentageSchema,
+    directQualificationCount: z.number().int().min(1).max(100),
+    branchQualificationCount: z.number().int().min(1).max(100),
   })
   .strict();
 
@@ -45,6 +47,7 @@ export const withdrawalConfigurationSchema = z
   .object({
     minimumAmount: positiveMoneySchema,
     allowedDays: z.array(z.number().int().min(1).max(31)).min(1).max(31),
+    feePercent: percentageSchema,
   })
   .strict()
   .transform((value) => ({

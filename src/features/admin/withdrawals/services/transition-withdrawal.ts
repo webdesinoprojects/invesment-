@@ -54,6 +54,19 @@ export async function transitionWithdrawal(input: TransitionWithdrawalInput & { 
           },
         });
         if (updated.count !== 1) throw new Error("ADMIN_CONFLICT");
+        if (request.feeAmount.greaterThan(0)) {
+          await tx.platformRevenueEntry.create({
+            data: {
+              category: "WITHDRAWAL_FEE",
+              sourceUserId: request.userId,
+              withdrawalRequestId: request.id,
+              amount: request.feeAmount,
+              currency: request.currency,
+              description: `Withdrawal fee for external payment ${input.paymentHash}.`,
+              recordedByAdminId: input.adminId,
+            },
+          });
+        }
       } else {
         const allowed = input.transition === "REJECT"
           ? request.status === "PENDING" || request.status === "PROCESSING"

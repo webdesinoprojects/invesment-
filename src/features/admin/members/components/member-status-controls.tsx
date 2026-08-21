@@ -43,13 +43,16 @@ export function MemberStatusControls({ id, status, member }: { id: string; statu
           <textarea
             name="reason"
             rows={2}
-            aria-label="Message shown to the blocked member"
-            placeholder="Message shown to the member (required)"
+            aria-label="Member status reason"
+            placeholder="Reason (required for block or archive)"
             className="w-full resize-y rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900 caret-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
           />
-          <label className="flex items-start gap-2 whitespace-normal text-[11px] leading-4 text-slate-600"><input type="checkbox" name="confirmed" value="true" required className="mt-0.5"/>I confirm this member access change and its immediate account consequence.</label>
           {state.message&&<p className={`whitespace-normal text-xs ${state.ok?"text-emerald-700":"text-red-600"}`}>{state.message}</p>}
-          <div className="flex gap-2">{status!=="ACTIVE"&&<button disabled={pending} name="status" value="ACTIVE" className="flex-1 rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-60">Activate</button>}{status!=="BLOCKED"&&<button disabled={pending} name="status" value="BLOCKED" className="flex-1 rounded-xl bg-red-50 px-3 py-2.5 text-sm font-bold text-red-700 disabled:opacity-60">Block</button>}</div>
+          <div className="grid grid-cols-2 gap-2">
+            {status!=="ACTIVE"&&<button disabled={pending} name="status" value="ACTIVE" className="rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-60">Activate</button>}
+            {status!=="BLOCKED"&&status!=="ARCHIVED"&&<button disabled={pending} name="status" value="BLOCKED" className="rounded-xl bg-red-50 px-3 py-2.5 text-sm font-bold text-red-700 disabled:opacity-60">Block</button>}
+            {status!=="ARCHIVED"&&<button disabled={pending} name="status" value="ARCHIVED" className="rounded-xl bg-slate-200 px-3 py-2.5 text-sm font-bold text-slate-800 disabled:opacity-60">Archive</button>}
+          </div>
         </form>
       </div>,
       document.body,

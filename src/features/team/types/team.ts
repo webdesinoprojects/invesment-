@@ -12,7 +12,7 @@ export type TeamMemberRow = {
   mobile: string;
   rank: number;
   amount: string;
-  status: "PENDING" | "ACTIVE" | "BLOCKED";
+  status: "PENDING" | "ACTIVE" | "BLOCKED" | "ARCHIVED";
 };
 
 export type TeamPageData = {

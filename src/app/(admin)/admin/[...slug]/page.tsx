@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   renderIncomeLedgerPage,
   renderInvestmentsPage,
+  renderPlatformRevenuePage,
   renderRoiPage,
   renderWalletLedgerPage,
 } from "@/features/admin/pages/finance-page";
@@ -65,6 +66,7 @@ export default async function AdminModulePage({
   if (key.startsWith("investments")) return renderInvestmentsPage(context);
   if (key === "wallet-ledger") return renderWalletLedgerPage(context);
   if (key === "income-ledger") return renderIncomeLedgerPage(context);
+  if (key === "platform-revenue") return renderPlatformRevenuePage(context);
   if (key.startsWith("roi/")) return renderRoiPage(context);
   if (key.startsWith("referrals/")) return renderReferralsPage(context);
   if (key === "audit-logs") return renderAuditPage(context);

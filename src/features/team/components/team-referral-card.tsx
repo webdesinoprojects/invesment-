@@ -16,7 +16,7 @@ export function TeamReferralCard({
         <div>
           <h2 className="font-semibold">Refer and earn</h2>
           <p className="text-sm text-muted-foreground">
-            {isActive ? "Your referral link is active." : "Activates after an approved investment."}
+            Available immediately after registration.
           </p>
         </div>
       </div>

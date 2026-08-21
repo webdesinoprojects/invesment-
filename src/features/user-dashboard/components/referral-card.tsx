@@ -32,7 +32,7 @@ export function ReferralCard({
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Referral program</h2>
         <span className="text-xs text-muted-foreground">
-          {isReferralActive ? "Active" : "Activates after investment"}
+          Available immediately
         </span>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-5">

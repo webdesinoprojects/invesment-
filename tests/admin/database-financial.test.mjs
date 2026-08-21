@@ -59,8 +59,12 @@ after(async () => {
   const runIds = [...trackedRuns];
   await prisma.roiCredit.deleteMany({ where: { runId: { in: runIds } } });
   await prisma.roiRun.deleteMany({ where: { id: { in: runIds } } });
+  await prisma.platformRevenueEntry.deleteMany({ where: { sourceUserId: { in: userIds } } });
   await prisma.incomeLedgerEntry.deleteMany({
     where: { OR: [{ userId: { in: userIds } }, { sourceUserId: { in: userIds } }] },
+  });
+  await prisma.referralCommissionSchedule.deleteMany({
+    where: { OR: [{ beneficiaryUserId: { in: userIds } }, { sourceUserId: { in: userIds } }] },
   });
   await prisma.depositRequest.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.withdrawalRequest.deleteMany({ where: { userId: { in: userIds } } });
@@ -134,6 +138,10 @@ test("withdrawal paid and release transitions apply exactly once and payment has
   assert.equal(await prisma.walletLedgerEntry.count({
     where: { referenceId: paid.id, direction: "SETTLE" },
   }), 1);
+  const retainedFee = await prisma.platformRevenueEntry.findUniqueOrThrow({
+    where: { withdrawalRequestId: paid.id },
+  });
+  assert.equal(retainedFee.amount.toFixed(6), "4.000000");
 
   const released = await createWithdrawal(user.id, "30");
   const releaseResults = await Promise.all([
@@ -188,74 +196,90 @@ test("concurrent adjustments keep an exact balance and a reversal can post only 
 });
 
 test("manual activation targets the exact UUID when names duplicate and rejects repeat tokens", { skip: skipReason }, async () => {
+  const admin = await createAdmin();
   const first = await createUser({ fullName: "Duplicate Name" });
   const second = await createUser({ fullName: "Duplicate Name" });
-  await seedBalance(second.id, "100");
   const settings = defaultInvestmentSettings();
   const token = randomUUID();
   const activated = await activateInvestment({
-    payerUserId: second.id,
     targetUserId: second.id,
     amount: "10",
     requestToken: token,
     settings,
+    adminId: admin.id,
   });
   assert.equal(activated.ok, true);
   assert.equal(await prisma.investment.count({ where: { userId: first.id } }), 0);
   assert.equal(await prisma.investment.count({ where: { userId: second.id } }), 1);
   const repeat = await activateInvestment({
-    payerUserId: second.id,
     targetUserId: second.id,
     amount: "10",
     requestToken: token,
     settings,
+    adminId: admin.id,
   });
   assert.deepEqual(repeat, { ok: false, code: "DUPLICATE_REQUEST" });
 });
 
-test("five-level referral commissions use a sliding independent window", { skip: skipReason }, async () => {
-  const chain = [];
-  for (let index = 0; index < 8; index += 1) {
-    const user = await createUser({ sponsorId: chain[index - 1]?.id });
-    chain.push(user);
-    await prisma.referralClosure.createMany({
-      data: chain.slice(0, index + 1).map((ancestor, ancestorIndex) => ({
-        ancestorId: ancestor.id,
-        descendantId: user.id,
-        depth: index - ancestorIndex,
-      })),
-    });
-  }
-  await seedBalance(chain[6].id, "100");
-  await seedBalance(chain[7].id, "100");
+test("referral bonuses unlock at five direct and five branch investments", { skip: skipReason }, async () => {
+  const admin = await createAdmin();
   const settings = defaultInvestmentSettings();
-  await activateInvestment({
-    payerUserId: chain[6].id,
-    targetUserId: chain[6].id,
-    amount: "10",
+  const sponsor = await createUser();
+  const directMembers = [];
+  for (let index = 0; index < 5; index += 1) {
+    const member = await createUser({ sponsorId: sponsor.id });
+    directMembers.push(member);
+    const result = await activateInvestment({
+      targetUserId: member.id,
+      amount: "100",
+      requestToken: randomUUID(),
+      settings,
+      adminId: admin.id,
+    });
+    assert.equal(result.ok, true);
+    const monthlyCount = await prisma.incomeLedgerEntry.count({
+      where: { userId: sponsor.id, type: "MONTHLY_DIRECT" },
+    });
+    assert.equal(monthlyCount, index < 4 ? 0 : 5);
+  }
+
+  assert.equal(await prisma.incomeLedgerEntry.count({
+    where: { userId: sponsor.id, type: "DIRECT_REFERRAL_BONUS" },
+  }), 5);
+  assert.equal((await latestBalance(sponsor.id)).toFixed(6), "30.000000");
+
+  const repeatMemberInvestment = await activateInvestment({
+    targetUserId: directMembers[0].id,
+    amount: "100",
     requestToken: randomUUID(),
     settings,
+    adminId: admin.id,
   });
-  await activateInvestment({
-    payerUserId: chain[7].id,
-    targetUserId: chain[7].id,
-    amount: "10",
-    requestToken: randomUUID(),
-    settings,
-  });
-  const firstWindow = await prisma.incomeLedgerEntry.findMany({
-    where: { sourceUserId: chain[6].id },
-    select: { userId: true, type: true, percent: true },
-  });
-  assert.equal(firstWindow.some((entry) => entry.userId === chain[5].id && entry.type === "DIRECT_REFERRAL" && entry.percent.equals(1)), true);
-  assert.equal([4, 3, 2, 1].every((index) => firstWindow.some((entry) => entry.userId === chain[index].id && entry.percent.equals("0.25"))), true);
-  assert.equal(firstWindow.some((entry) => entry.userId === chain[0].id), false);
-  const secondWindow = await prisma.incomeLedgerEntry.findMany({
-    where: { sourceUserId: chain[7].id },
-    select: { userId: true },
-  });
-  assert.equal(secondWindow.some((entry) => entry.userId === chain[2].id), true);
-  assert.equal(secondWindow.some((entry) => entry.userId === chain[1].id), false);
+  assert.equal(repeatMemberInvestment.ok, true);
+  assert.equal(await prisma.incomeLedgerEntry.count({
+    where: { userId: sponsor.id, type: "DIRECT_REFERRAL_BONUS" },
+  }), 5, "the one-time direct bonus must not repeat for later investments");
+
+  const branchOwner = directMembers[0];
+  for (let index = 0; index < 5; index += 1) {
+    const member = await createUser({ sponsorId: branchOwner.id });
+    const result = await activateInvestment({
+      targetUserId: member.id,
+      amount: "100",
+      requestToken: randomUUID(),
+      settings,
+      adminId: admin.id,
+    });
+    assert.equal(result.ok, true);
+    const levelCount = await prisma.incomeLedgerEntry.count({
+      where: { userId: sponsor.id, type: "MONTHLY_LEVEL" },
+    });
+    assert.equal(levelCount, index < 4 ? 0 : 5);
+  }
+
+  assert.equal(await prisma.referralCommissionSchedule.count({
+    where: { beneficiaryUserId: sponsor.id, type: "MONTHLY_LEVEL", paidPeriods: 1 },
+  }), 5);
 });
 
 test("ROI preserves partial credits on retry and enforces the payout cap", { skip: skipReason }, async () => {
@@ -586,7 +610,9 @@ async function createWithdrawal(userId, amount) {
       id,
       userId,
       amount,
-      netAmount: amount,
+      feeAmount: (Number(amount) * 0.1).toString(),
+      netAmount: (Number(amount) * 0.9).toString(),
+      network: "MANUAL",
       walletAddress: `0x${"1".repeat(40)}`,
       holdLedgerEntryId: hold.id,
     },
@@ -610,8 +636,10 @@ function defaultInvestmentSettings() {
     minimumAmount: "10",
     monthlyRoiPercent: "8",
     durationMonths: 25,
-    directCommissionPercent: "1",
-    levelCommissionPercent: "0.25",
-    maxLevelDepth: 5,
+    directBonusPercent: "5",
+    directMonthlyPercent: "1",
+    levelMonthlyPercent: "0.25",
+    directQualificationCount: 5,
+    branchQualificationCount: 5,
   };
 }

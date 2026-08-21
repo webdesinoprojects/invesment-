@@ -21,7 +21,7 @@ export type ManualActivationMemberResult = {
   fullName: string;
   email: string;
   status: string;
-  walletBalance: string;
+  totalInvestment: string;
 };
 
 export async function searchManualActivationMembersAction(
@@ -58,10 +58,9 @@ export async function searchManualActivationMembersAction(
 
   const resolved = await Promise.all(
     members.map(async (member) => {
-      const latest = await getPrisma().walletLedgerEntry.findFirst({
-        where: { userId: member.id },
-        orderBy: { sequence: "desc" },
-        select: { balanceAfter: true },
+      const total = await getPrisma().investment.aggregate({
+        where: { userId: member.id, status: { in: ["ACTIVE", "PAUSED"] } },
+        _sum: { amount: true },
       });
       return {
         userId: member.id,
@@ -69,7 +68,7 @@ export async function searchManualActivationMembersAction(
         fullName: member.fullName,
         email: member.email,
         status: member.status,
-        walletBalance: (latest?.balanceAfter ?? 0).toString(),
+        totalInvestment: (total._sum.amount ?? 0).toString(),
       };
     }),
   );
@@ -86,7 +85,7 @@ export async function manualActivationAction(
     return {
       ok: false,
       code: "VALIDATION",
-      message: "Check the activation details and explicit confirmation.",
+      message: "Check the investment credit details.",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -118,7 +117,6 @@ export async function manualActivationAction(
 
   try {
     const result = await activateInvestment({
-      payerUserId: member.id,
       targetUserId: member.id,
       amount: parsed.data.amount,
       requestToken: parsed.data.requestToken,
@@ -131,20 +129,18 @@ export async function manualActivationAction(
         ok: false,
         code: result.code,
         message:
-          result.code === "INSUFFICIENT_FUNDS"
-            ? "Member wallet balance is insufficient."
-            : result.code === "DUPLICATE_REQUEST"
-              ? "This activation request was already submitted."
-              : "Activation could not be completed.",
+          result.code === "DUPLICATE_REQUEST"
+              ? "This investment credit was already submitted."
+              : "Investment credit could not be completed.",
       };
     }
     revalidatePath("/admin");
     return {
       ok: true,
       data: { nextRequestToken: randomUUID() },
-      message: "Investment activated using the shared wallet and commission rules.",
+      message: "Admin-funded investment credited and commission rules evaluated.",
     };
   } catch {
-    return { ok: false, code: "FAILED", message: "Manual activation failed." };
+    return { ok: false, code: "FAILED", message: "Investment credit failed." };
   }
 }

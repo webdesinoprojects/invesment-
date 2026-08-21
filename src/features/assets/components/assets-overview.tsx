@@ -35,7 +35,7 @@ export function AssetsOverview({ data }: { data: AssetsData }) {
       <section className="rounded-lg border border-primary/30 bg-card p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase text-muted-foreground">Main wallet balance</p>
+            <p className="text-xs font-medium uppercase text-muted-foreground">Available earnings</p>
             <p className="mt-2 text-3xl font-semibold tabular-nums">{formatUsd(data.walletBalance)}</p>
           </div>
           <div className="flex size-10 items-center justify-center rounded-md border border-primary/30 bg-primary/10">

@@ -1,6 +1,8 @@
 export type WithdrawalHistoryItem = {
   id: string;
   amount: string;
+  feeAmount: string;
+  netAmount: string;
   walletAddress: string;
   status: "PENDING" | "PROCESSING" | "PAID" | "REJECTED" | "CANCELLED" | "FAILED";
   submittedAt: string;
@@ -13,6 +15,7 @@ export type WithdrawalPageData = {
   availableBalance: string;
   walletAddress: string | null;
   minimumAmount: string | null;
+  feePercent: string | null;
   allowedDays: number[];
   isOpen: boolean;
   history: WithdrawalHistoryItem[];

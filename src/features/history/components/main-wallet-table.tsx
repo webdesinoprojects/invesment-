@@ -25,7 +25,7 @@ export function MainWalletTable({
 }) {
   return (
     <section className="rounded-lg border border-border bg-card p-5">
-      <h2 className="font-semibold">Main wallet ledger</h2>
+      <h2 className="font-semibold">Earnings ledger</h2>
       {rows.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No data found.</p>
       ) : (

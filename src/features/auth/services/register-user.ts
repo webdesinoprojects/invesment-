@@ -50,15 +50,12 @@ export async function registerUser(
       message: "The invite ID does not belong to a registered partner.",
     };
   }
-  if (
-    sponsor &&
-    (sponsor.status !== "ACTIVE" || !sponsor.isReferralActive)
-  ) {
+  if (sponsor && (sponsor.status === "BLOCKED" || sponsor.status === "ARCHIVED")) {
     return {
       ok: false,
       code: "SPONSOR_NOT_ELIGIBLE",
       message:
-        "Referral privileges are available only to activated partners.",
+        "This sponsor account is not available for referrals.",
     };
   }
 
@@ -136,6 +133,7 @@ export async function registerUser(
           countryCode: input.countryCode,
           securityPinHash,
           sponsorId: sponsor?.id ?? null,
+          isReferralActive: true,
         },
       });
 
@@ -143,7 +141,7 @@ export async function registerUser(
         data: {
           userId: profile.id,
           code: memberId,
-          isActive: false,
+          isActive: true,
         },
       });
 

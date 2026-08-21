@@ -63,13 +63,13 @@ export function MemberAdministration({
         <div className="rounded-xl border p-4">
           <h3 className="font-semibold">Approved profile fields</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Edit only the allowlisted identity and payout-address fields.
+            Edit only the allowlisted identity and payout-detail fields.
           </p>
           <div className="mt-4">
             <AdminActionDialog
               triggerLabel="Edit approved fields"
               title={`Edit ${member.fullName}`}
-              description="Review the exact member identity and wallet changes. Saving replaces the listed profile values and records the required reason in the audit log."
+              description="Review the exact member identity and payout changes. Saving replaces the listed profile values and records the required reason in the audit log."
             >
               <form action={profileAction} className="space-y-3">
                 <input type="hidden" name="id" value={member.id} />
@@ -84,7 +84,7 @@ export function MemberAdministration({
                 <input
                   name="bep20WalletAddress"
                   defaultValue={member.bep20WalletAddress ?? ""}
-                  placeholder="Optional BEP20 wallet"
+                  placeholder="Optional UPI ID or payout detail"
                   className={inputClass}
                 />
                 <input name="reason" placeholder="Required edit reason" className={inputClass} required />

@@ -3,30 +3,23 @@
 import { useActionState, useState, useTransition } from "react";
 
 import { AdminActionDialog } from "@/components/admin/admin-action-dialog";
+import type { AdminActionResult } from "../../shared/action-result";
 import {
   manualActivationAction,
   searchManualActivationMembersAction,
   type ManualActivationMemberResult,
 } from "../actions/manual-activation";
-import type { AdminActionResult } from "../../shared/action-result";
 
-const initialManualActivationState: AdminActionResult<{
-  nextRequestToken: string | null;
-}> = {
+const initialState: AdminActionResult<{ nextRequestToken: string | null }> = {
   ok: true,
   data: { nextRequestToken: null },
   message: "",
 };
 
 export function ManualActivationForm() {
-  const [state, action, pending] = useActionState(
-    manualActivationAction,
-    initialManualActivationState,
-  );
+  const [state, action, pending] = useActionState(manualActivationAction, initialState);
   const [initialToken] = useState(() => crypto.randomUUID());
-  const token = state.ok && state.data.nextRequestToken
-    ? state.data.nextRequestToken
-    : initialToken;
+  const token = state.ok && state.data.nextRequestToken ? state.data.nextRequestToken : initialToken;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ManualActivationMemberResult[]>([]);
   const [selected, setSelected] = useState<ManualActivationMemberResult | null>(null);
@@ -50,9 +43,9 @@ export function ManualActivationForm() {
 
   return (
     <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="font-bold">Manual wallet activation</h2>
+      <h2 className="font-bold">Credit member investment</h2>
       <p className="mt-1 text-xs text-slate-500">
-        Resolve an exact member before using the shared wallet, investment and commission service.
+        Resolve the exact member, then credit the amount as an active investment.
       </p>
 
       <div className="mt-4 flex gap-2">
@@ -81,23 +74,17 @@ export function ManualActivationForm() {
                 <th className="p-3">Member</th>
                 <th className="p-3">Email</th>
                 <th className="p-3">Status</th>
-                <th className="p-3">Wallet</th>
+                <th className="p-3">Active investment</th>
                 <th className="p-3">Select</th>
               </tr>
             </thead>
             <tbody>
               {results.map((member) => (
                 <tr key={member.userId} className="border-t border-slate-100">
-                  <td className="p-3">
-                    <strong>{member.fullName}</strong>
-                    <br />
-                    {member.memberId}
-                    <br />
-                    <span className="text-[10px] text-slate-400">{member.userId}</span>
-                  </td>
+                  <td className="p-3"><strong>{member.fullName}</strong><br />{member.memberId}</td>
                   <td className="p-3">{member.email}</td>
                   <td className="p-3">{member.status}</td>
-                  <td className="p-3">{member.walletBalance} USDT</td>
+                  <td className="p-3">{member.totalInvestment} USDT</td>
                   <td className="p-3">
                     <button
                       type="button"
@@ -117,26 +104,8 @@ export function ManualActivationForm() {
       {selected ? (
         <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="grid gap-2 text-sm sm:grid-cols-2">
-            <p>
-              <span className="text-slate-500">Resolved member</span>
-              <br />
-              <strong>{selected.fullName} · {selected.memberId}</strong>
-            </p>
-            <p>
-              <span className="text-slate-500">Internal user ID</span>
-              <br />
-              <strong className="break-all">{selected.userId}</strong>
-            </p>
-            <p>
-              <span className="text-slate-500">Current wallet balance</span>
-              <br />
-              <strong>{selected.walletBalance} USDT</strong>
-            </p>
-            <p>
-              <span className="text-slate-500">Activation amount</span>
-              <br />
-              <strong>{amount || "Enter below"} USDT</strong>
-            </p>
+            <p><span className="text-slate-500">Resolved member</span><br /><strong>{selected.fullName} - {selected.memberId}</strong></p>
+            <p><span className="text-slate-500">Current active investment</span><br /><strong>{selected.totalInvestment} USDT</strong></p>
           </div>
           <input
             value={amount}
@@ -144,42 +113,28 @@ export function ManualActivationForm() {
             required
             inputMode="decimal"
             placeholder="Amount USDT"
-            aria-label="Activation amount"
+            aria-label="Investment credit amount"
             className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
           />
           <AdminActionDialog
-            triggerLabel="Review activation"
-            title="Confirm manual investment activation"
-            description={`${selected.fullName} · ${selected.memberId} · wallet ${selected.walletBalance} USDT · activation ${amount || "not entered"} USDT. Confirmation debits this wallet and creates the investment and eligible commissions.`}
+            triggerLabel="Review credit"
+            title="Confirm investment credit"
+            description={`${selected.fullName} - ${selected.memberId} - credit ${amount || "not entered"} USDT. This creates an active investment and evaluates referral commissions.`}
           >
             <form action={action} className="space-y-3">
               <input type="hidden" name="requestToken" value={token} />
               <input type="hidden" name="userId" value={selected.userId} />
               <input type="hidden" name="amount" value={amount} />
-              <p className="break-all text-xs text-slate-500">
-                Internal user ID: {selected.userId}
-              </p>
-            <input
-              name="reason"
-              required
-              placeholder="Activation reason"
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            />
-              <label className="flex items-start gap-2 text-xs text-slate-600">
-                <input
-                  type="checkbox"
-                  name="confirmed"
-                  value="true"
-                  required
-                  className="mt-0.5"
-                />
-                I confirm the exact member, wallet balance and activation amount shown above.
-              </label>
+              <input
+                name="reason"
+                placeholder="Optional note"
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              />
               <button
                 disabled={pending}
                 className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white"
               >
-                {pending ? "Activating..." : "Confirm activation"}
+                {pending ? "Crediting..." : "Credit investment"}
               </button>
             </form>
           </AdminActionDialog>

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { Prisma } from "@/generated/prisma/client";
+import type { IncomeType } from "@/generated/prisma/enums";
 import type { AssetsData } from "@/features/assets/types/assets";
 import { getPrisma } from "@/lib/db/prisma";
 
@@ -29,13 +31,19 @@ export async function getAssetsData(userId: string): Promise<AssetsData> {
   const incomeByType = new Map(
     income.map((entry) => [entry.type, entry._sum.amount?.toString() ?? "0"]),
   );
+  const sumIncome = (...types: IncomeType[]) => types
+    .reduce(
+      (total, type) => total.plus(incomeByType.get(type) ?? 0),
+      new Prisma.Decimal(0),
+    )
+    .toString();
 
   return {
     walletBalance: latestWalletEntry?.balanceAfter.toString() ?? "0",
     activeInvestment: activeInvestment._sum.amount?.toString() ?? "0",
     dailyRoi: incomeByType.get("DAILY_ROI") ?? "0",
-    directIncome: incomeByType.get("DIRECT_REFERRAL") ?? "0",
-    levelIncome: incomeByType.get("LEVEL_INCOME") ?? "0",
+    directIncome: sumIncome("DIRECT_REFERRAL", "DIRECT_REFERRAL_BONUS", "MONTHLY_DIRECT"),
+    levelIncome: sumIncome("LEVEL_INCOME", "MONTHLY_LEVEL"),
     rankIncome: incomeByType.get("RANK_REWARD") ?? "0",
     salaryIncome: incomeByType.get("SALARY") ?? "0",
     totalWithdrawn: withdrawn._sum.amount?.toString() ?? "0",

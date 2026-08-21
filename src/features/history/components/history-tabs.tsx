@@ -5,7 +5,7 @@ import type { HistoryTab } from "@/features/history/types/history";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { value: "main", label: "Main wallet", icon: WalletCards },
+  { value: "main", label: "Earnings ledger", icon: WalletCards },
   { value: "withdraw", label: "Withdraw history", icon: ArrowUpFromLine },
   { value: "deposit", label: "Deposit history", icon: ArrowDownToLine },
 ] as const;

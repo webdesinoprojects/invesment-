@@ -24,6 +24,7 @@ export type ActivateInvestmentResult =
       code:
         | "DUPLICATE_REQUEST"
         | "INSUFFICIENT_FUNDS"
+        | "ADMIN_REQUIRED"
         | "MEMBER_NOT_FOUND"
         | "MEMBER_BLOCKED";
     };

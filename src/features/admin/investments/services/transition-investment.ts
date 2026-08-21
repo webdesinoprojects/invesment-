@@ -25,6 +25,12 @@ export async function transitionInvestment(input: TransitionInvestmentInput & { 
       },
     });
     if (updated.count !== 1) return { ok: false as const, code: "CONFLICT" };
+    if (input.status === "CANCELLED") {
+      await tx.referralCommissionSchedule.updateMany({
+        where: { investmentId: investment.id, status: "ACTIVE" },
+        data: { status: "CANCELLED", nextDueAt: null, completedAt: new Date() },
+      });
+    }
     await tx.auditLog.create({
       data: { actorAdminId: input.adminId, targetUserId: investment.userId, action: "INVESTMENT_STATUS_UPDATE", entityType: "Investment", entityId: investment.id, before: { status: input.expectedStatus }, after: { status: input.status }, reason: input.reason || null },
     });

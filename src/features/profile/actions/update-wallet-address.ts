@@ -52,7 +52,7 @@ export async function updateWalletAddressAction(
     ok: true,
     code: "SUCCESS",
     data: undefined,
-    message: walletAddress ? "Wallet address updated." : "Wallet address removed.",
+    message: walletAddress ? "Payout details updated." : "Payout details removed.",
   };
 }
 

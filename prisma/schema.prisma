@@ -11,6 +11,7 @@ enum UserStatus {
   PENDING
   ACTIVE
   BLOCKED
+  ARCHIVED
 }
 
 enum AdminRole {
@@ -78,8 +79,21 @@ enum IncomeType {
   DAILY_ROI
   DIRECT_REFERRAL
   LEVEL_INCOME
+  DIRECT_REFERRAL_BONUS
+  MONTHLY_DIRECT
+  MONTHLY_LEVEL
   RANK_REWARD
   SALARY
+}
+
+enum CommissionScheduleStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PlatformRevenueCategory {
+  WITHDRAWAL_FEE
 }
 
 enum IncomeStatus {
@@ -111,41 +125,44 @@ enum AuditOutcome {
 }
 
 model UserProfile {
-  id                        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  authUserId                String              @unique @db.Uuid
-  memberId                  String              @unique @db.VarChar(16)
-  fullName                  String              @db.VarChar(120)
-  email                     String              @unique @db.VarChar(254)
-  mobile                    String              @unique @db.VarChar(24)
-  countryCode               String              @db.Char(2)
-  securityPinHash           String              @db.Text
-  securityPinFailedAttempts Int                 @default(0)
-  securityPinLockedUntil    DateTime?           @db.Timestamptz(3)
-  bep20WalletAddress        String?             @db.VarChar(64)
-  status                    UserStatus          @default(PENDING)
-  rank                      Int                 @default(0)
-  isReferralActive          Boolean             @default(false)
-  blockedAt                 DateTime?           @db.Timestamptz(3)
-  blockedByAdminId          String?             @db.Uuid
-  blockReason               String?             @db.VarChar(500)
-  sponsorId                 String?             @db.Uuid
-  blockedByAdmin            AdminProfile?       @relation("UserBlockedByAdmin", fields: [blockedByAdminId], references: [id], onDelete: SetNull)
-  sponsor                   UserProfile?        @relation("UserSponsor", fields: [sponsorId], references: [id], onDelete: SetNull)
-  directReferrals           UserProfile[]       @relation("UserSponsor")
-  referralLink              ReferralLink?
-  ancestorLinks             ReferralClosure[]   @relation("ClosureAncestor")
-  descendantLinks           ReferralClosure[]   @relation("ClosureDescendant")
-  investments               Investment[]
-  fundedInvestments         Investment[]        @relation("InvestmentFundedBy")
-  depositRequests           DepositRequest[]
-  withdrawalRequests        WithdrawalRequest[]
-  walletEntries             WalletLedgerEntry[]
-  incomeEntries             IncomeLedgerEntry[] @relation("IncomeOwner")
-  sourcedIncomeEntries      IncomeLedgerEntry[] @relation("IncomeSourceUser")
-  auditTargets              AuditLog[]          @relation("AuditTargetUser")
-  adminNotes                AdminUserNote[]
-  createdAt                 DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt                 DateTime            @updatedAt @db.Timestamptz(3)
+  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authUserId                 String                       @unique @db.Uuid
+  memberId                   String                       @unique @db.VarChar(16)
+  fullName                   String                       @db.VarChar(120)
+  email                      String                       @unique @db.VarChar(254)
+  mobile                     String                       @unique @db.VarChar(24)
+  countryCode                String                       @db.Char(2)
+  securityPinHash            String                       @db.Text
+  securityPinFailedAttempts  Int                          @default(0)
+  securityPinLockedUntil     DateTime?                    @db.Timestamptz(3)
+  bep20WalletAddress         String?                      @db.VarChar(64)
+  status                     UserStatus                   @default(PENDING)
+  rank                       Int                          @default(0)
+  isReferralActive           Boolean                      @default(false)
+  blockedAt                  DateTime?                    @db.Timestamptz(3)
+  blockedByAdminId           String?                      @db.Uuid
+  blockReason                String?                      @db.VarChar(500)
+  sponsorId                  String?                      @db.Uuid
+  blockedByAdmin             AdminProfile?                @relation("UserBlockedByAdmin", fields: [blockedByAdminId], references: [id], onDelete: SetNull)
+  sponsor                    UserProfile?                 @relation("UserSponsor", fields: [sponsorId], references: [id], onDelete: SetNull)
+  directReferrals            UserProfile[]                @relation("UserSponsor")
+  referralLink               ReferralLink?
+  ancestorLinks              ReferralClosure[]            @relation("ClosureAncestor")
+  descendantLinks            ReferralClosure[]            @relation("ClosureDescendant")
+  investments                Investment[]
+  fundedInvestments          Investment[]                 @relation("InvestmentFundedBy")
+  depositRequests            DepositRequest[]
+  withdrawalRequests         WithdrawalRequest[]
+  walletEntries              WalletLedgerEntry[]
+  incomeEntries              IncomeLedgerEntry[]          @relation("IncomeOwner")
+  sourcedIncomeEntries       IncomeLedgerEntry[]          @relation("IncomeSourceUser")
+  commissionSchedules        ReferralCommissionSchedule[] @relation("CommissionBeneficiary")
+  sourcedCommissionSchedules ReferralCommissionSchedule[] @relation("CommissionSource")
+  platformRevenueEntries     PlatformRevenueEntry[]       @relation("PlatformRevenueSourceUser")
+  auditTargets               AuditLog[]                   @relation("AuditTargetUser")
+  adminNotes                 AdminUserNote[]
+  createdAt                  DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime                     @updatedAt @db.Timestamptz(3)
 
   @@index([sponsorId])
   @@index([blockedByAdminId, blockedAt])
@@ -154,37 +171,38 @@ model UserProfile {
 }
 
 model AdminProfile {
-  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  authUserId            String                  @unique @db.Uuid
-  email                 String?                 @unique @db.VarChar(254)
-  displayName           String                  @db.VarChar(120)
-  role                  AdminRole
-  isActive              Boolean                 @default(true)
-  lastLoginAt           DateTime?               @db.Timestamptz(3)
-  deactivatedAt         DateTime?               @db.Timestamptz(3)
-  deactivationReason    String?                 @db.VarChar(500)
-  createdByAdminId      String?                 @db.Uuid
-  deactivatedByAdminId  String?                 @db.Uuid
-  createdByAdmin        AdminProfile?           @relation("AdminCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
-  createdAdmins         AdminProfile[]          @relation("AdminCreatedBy")
-  deactivatedByAdmin    AdminProfile?           @relation("AdminDeactivatedBy", fields: [deactivatedByAdminId], references: [id], onDelete: SetNull)
-  deactivatedAdmins     AdminProfile[]          @relation("AdminDeactivatedBy")
-  blockedUsers          UserProfile[]           @relation("UserBlockedByAdmin")
-  reviewedDeposits      DepositRequest[]        @relation("DepositReviewedBy")
-  reviewedWithdrawals   WithdrawalRequest[]     @relation("WithdrawalReviewedBy")
-  processingWithdrawals WithdrawalRequest[]     @relation("WithdrawalProcessedBy")
-  paidWithdrawals       WithdrawalRequest[]     @relation("WithdrawalPaidBy")
-  activatedInvestments  Investment[]            @relation("InvestmentActivatedBy")
-  changedInvestments    Investment[]            @relation("InvestmentStatusChangedBy")
-  createdWalletEntries  WalletLedgerEntry[]     @relation("WalletEntryCreatedBy")
-  reversedIncomeEntries IncomeLedgerEntry[]     @relation("IncomeReversedBy")
-  triggeredRoiRuns      RoiRun[]                @relation("RoiRunTriggeredBy")
-  updatedSettings       SystemSetting[]         @relation("SettingUpdatedBy")
-  settingRevisions      SystemSettingRevision[]
-  userNotes             AdminUserNote[]
-  audits                AuditLog[]              @relation("AuditActor")
-  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime                @updatedAt @db.Timestamptz(3)
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authUserId             String                  @unique @db.Uuid
+  email                  String?                 @unique @db.VarChar(254)
+  displayName            String                  @db.VarChar(120)
+  role                   AdminRole
+  isActive               Boolean                 @default(true)
+  lastLoginAt            DateTime?               @db.Timestamptz(3)
+  deactivatedAt          DateTime?               @db.Timestamptz(3)
+  deactivationReason     String?                 @db.VarChar(500)
+  createdByAdminId       String?                 @db.Uuid
+  deactivatedByAdminId   String?                 @db.Uuid
+  createdByAdmin         AdminProfile?           @relation("AdminCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAdmins          AdminProfile[]          @relation("AdminCreatedBy")
+  deactivatedByAdmin     AdminProfile?           @relation("AdminDeactivatedBy", fields: [deactivatedByAdminId], references: [id], onDelete: SetNull)
+  deactivatedAdmins      AdminProfile[]          @relation("AdminDeactivatedBy")
+  blockedUsers           UserProfile[]           @relation("UserBlockedByAdmin")
+  reviewedDeposits       DepositRequest[]        @relation("DepositReviewedBy")
+  reviewedWithdrawals    WithdrawalRequest[]     @relation("WithdrawalReviewedBy")
+  processingWithdrawals  WithdrawalRequest[]     @relation("WithdrawalProcessedBy")
+  paidWithdrawals        WithdrawalRequest[]     @relation("WithdrawalPaidBy")
+  activatedInvestments   Investment[]            @relation("InvestmentActivatedBy")
+  changedInvestments     Investment[]            @relation("InvestmentStatusChangedBy")
+  createdWalletEntries   WalletLedgerEntry[]     @relation("WalletEntryCreatedBy")
+  reversedIncomeEntries  IncomeLedgerEntry[]     @relation("IncomeReversedBy")
+  triggeredRoiRuns       RoiRun[]                @relation("RoiRunTriggeredBy")
+  updatedSettings        SystemSetting[]         @relation("SettingUpdatedBy")
+  settingRevisions       SystemSettingRevision[]
+  userNotes              AdminUserNote[]
+  audits                 AuditLog[]              @relation("AuditActor")
+  platformRevenueEntries PlatformRevenueEntry[]  @relation("PlatformRevenueRecordedBy")
+  createdAt              DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime                @updatedAt @db.Timestamptz(3)
 
   @@index([role, isActive])
   @@index([createdByAdminId])
@@ -230,32 +248,34 @@ model ReferralClosure {
 }
 
 model Investment {
-  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId            String              @db.Uuid
-  amount            Decimal             @db.Decimal(20, 6)
-  currency          String              @default("USDT") @db.VarChar(8)
-  monthlyRoiPercent Decimal             @default(8) @db.Decimal(7, 4)
-  durationMonths    Int                 @default(25)
-  payoutCapAmount   Decimal             @db.Decimal(20, 6)
-  paidOutAmount     Decimal             @default(0) @db.Decimal(20, 6)
-  status            InvestmentStatus    @default(ACTIVE)
-  source            InvestmentSource
-  fundedByUserId    String?             @db.Uuid
-  activatedById     String?             @db.Uuid
-  statusChangedById String?             @db.Uuid
-  statusReason      String?             @db.VarChar(500)
-  user              UserProfile         @relation(fields: [userId], references: [id], onDelete: Restrict)
-  fundedBy          UserProfile?        @relation("InvestmentFundedBy", fields: [fundedByUserId], references: [id], onDelete: SetNull)
-  activatedBy       AdminProfile?       @relation("InvestmentActivatedBy", fields: [activatedById], references: [id], onDelete: SetNull)
-  statusChangedBy   AdminProfile?       @relation("InvestmentStatusChangedBy", fields: [statusChangedById], references: [id], onDelete: SetNull)
-  incomeEntries     IncomeLedgerEntry[]
-  roiCredits        RoiCredit[]
-  activatedAt       DateTime            @default(now()) @db.Timestamptz(3)
-  pausedAt          DateTime?           @db.Timestamptz(3)
-  completedAt       DateTime?           @db.Timestamptz(3)
-  cancelledAt       DateTime?           @db.Timestamptz(3)
-  createdAt         DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
+  id                  String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String                       @db.Uuid
+  amount              Decimal                      @db.Decimal(20, 6)
+  currency            String                       @default("USDT") @db.VarChar(8)
+  monthlyRoiPercent   Decimal                      @default(8) @db.Decimal(7, 4)
+  durationMonths      Int                          @default(25)
+  payoutCapAmount     Decimal                      @db.Decimal(20, 6)
+  paidOutAmount       Decimal                      @default(0) @db.Decimal(20, 6)
+  status              InvestmentStatus             @default(ACTIVE)
+  source              InvestmentSource
+  activationKey       String?                      @unique @db.VarChar(160)
+  fundedByUserId      String?                      @db.Uuid
+  activatedById       String?                      @db.Uuid
+  statusChangedById   String?                      @db.Uuid
+  statusReason        String?                      @db.VarChar(500)
+  user                UserProfile                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  fundedBy            UserProfile?                 @relation("InvestmentFundedBy", fields: [fundedByUserId], references: [id], onDelete: SetNull)
+  activatedBy         AdminProfile?                @relation("InvestmentActivatedBy", fields: [activatedById], references: [id], onDelete: SetNull)
+  statusChangedBy     AdminProfile?                @relation("InvestmentStatusChangedBy", fields: [statusChangedById], references: [id], onDelete: SetNull)
+  incomeEntries       IncomeLedgerEntry[]
+  roiCredits          RoiCredit[]
+  commissionSchedules ReferralCommissionSchedule[]
+  activatedAt         DateTime                     @default(now()) @db.Timestamptz(3)
+  pausedAt            DateTime?                    @db.Timestamptz(3)
+  completedAt         DateTime?                    @db.Timestamptz(3)
+  cancelledAt         DateTime?                    @db.Timestamptz(3)
+  createdAt           DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                     @updatedAt @db.Timestamptz(3)
 
   @@index([userId, status])
   @@index([fundedByUserId, activatedAt])
@@ -297,42 +317,43 @@ model DepositRequest {
 }
 
 model WithdrawalRequest {
-  id                      String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId                  String             @db.Uuid
-  amount                  Decimal            @db.Decimal(20, 6)
-  feeAmount               Decimal            @default(0) @db.Decimal(20, 6)
-  netAmount               Decimal?           @db.Decimal(20, 6)
-  currency                String             @default("USDT") @db.VarChar(8)
-  network                 String             @default("BEP20") @db.VarChar(16)
-  walletAddress           String             @db.VarChar(64)
-  status                  WithdrawalStatus   @default(PENDING)
+  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                  String                @db.Uuid
+  amount                  Decimal               @db.Decimal(20, 6)
+  feeAmount               Decimal               @default(0) @db.Decimal(20, 6)
+  netAmount               Decimal?              @db.Decimal(20, 6)
+  currency                String                @default("USDT") @db.VarChar(8)
+  network                 String                @default("MANUAL") @db.VarChar(16)
+  walletAddress           String                @db.VarChar(64)
+  status                  WithdrawalStatus      @default(PENDING)
   reviewSource            ActionSource?
-  reviewedById            String?            @db.Uuid
-  processedById           String?            @db.Uuid
-  paidById                String?            @db.Uuid
-  paymentHash             String?            @unique @db.VarChar(128)
-  reviewNote              String?            @db.VarChar(500)
-  rejectionReason         String?            @db.VarChar(500)
-  failureReason           String?            @db.VarChar(500)
-  holdLedgerEntryId       String?            @unique @db.Uuid
-  settlementLedgerEntryId String?            @unique @db.Uuid
-  releaseLedgerEntryId    String?            @unique @db.Uuid
-  version                 Int                @default(0)
-  user                    UserProfile        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  reviewedBy              AdminProfile?      @relation("WithdrawalReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
-  processedBy             AdminProfile?      @relation("WithdrawalProcessedBy", fields: [processedById], references: [id], onDelete: SetNull)
-  paidBy                  AdminProfile?      @relation("WithdrawalPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
-  holdLedgerEntry         WalletLedgerEntry? @relation("WithdrawalHoldLedger", fields: [holdLedgerEntryId], references: [id], onDelete: Restrict)
-  settlementLedgerEntry   WalletLedgerEntry? @relation("WithdrawalSettlementLedger", fields: [settlementLedgerEntryId], references: [id], onDelete: Restrict)
-  releaseLedgerEntry      WalletLedgerEntry? @relation("WithdrawalReleaseLedger", fields: [releaseLedgerEntryId], references: [id], onDelete: Restrict)
-  submittedAt             DateTime           @default(now()) @db.Timestamptz(3)
-  reviewedAt              DateTime?          @db.Timestamptz(3)
-  processingStartedAt     DateTime?          @db.Timestamptz(3)
-  paidAt                  DateTime?          @db.Timestamptz(3)
-  cancelledAt             DateTime?          @db.Timestamptz(3)
-  failedAt                DateTime?          @db.Timestamptz(3)
-  createdAt               DateTime           @default(now()) @db.Timestamptz(3)
-  updatedAt               DateTime           @updatedAt @db.Timestamptz(3)
+  reviewedById            String?               @db.Uuid
+  processedById           String?               @db.Uuid
+  paidById                String?               @db.Uuid
+  paymentHash             String?               @unique @db.VarChar(128)
+  reviewNote              String?               @db.VarChar(500)
+  rejectionReason         String?               @db.VarChar(500)
+  failureReason           String?               @db.VarChar(500)
+  holdLedgerEntryId       String?               @unique @db.Uuid
+  settlementLedgerEntryId String?               @unique @db.Uuid
+  releaseLedgerEntryId    String?               @unique @db.Uuid
+  platformRevenueEntry    PlatformRevenueEntry?
+  version                 Int                   @default(0)
+  user                    UserProfile           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  reviewedBy              AdminProfile?         @relation("WithdrawalReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  processedBy             AdminProfile?         @relation("WithdrawalProcessedBy", fields: [processedById], references: [id], onDelete: SetNull)
+  paidBy                  AdminProfile?         @relation("WithdrawalPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
+  holdLedgerEntry         WalletLedgerEntry?    @relation("WithdrawalHoldLedger", fields: [holdLedgerEntryId], references: [id], onDelete: Restrict)
+  settlementLedgerEntry   WalletLedgerEntry?    @relation("WithdrawalSettlementLedger", fields: [settlementLedgerEntryId], references: [id], onDelete: Restrict)
+  releaseLedgerEntry      WalletLedgerEntry?    @relation("WithdrawalReleaseLedger", fields: [releaseLedgerEntryId], references: [id], onDelete: Restrict)
+  submittedAt             DateTime              @default(now()) @db.Timestamptz(3)
+  reviewedAt              DateTime?             @db.Timestamptz(3)
+  processingStartedAt     DateTime?             @db.Timestamptz(3)
+  paidAt                  DateTime?             @db.Timestamptz(3)
+  cancelledAt             DateTime?             @db.Timestamptz(3)
+  failedAt                DateTime?             @db.Timestamptz(3)
+  createdAt               DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
 
   @@index([status, submittedAt])
   @@index([userId, submittedAt])
@@ -377,35 +398,84 @@ model WalletLedgerEntry {
 }
 
 model IncomeLedgerEntry {
-  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId                String             @db.Uuid
-  sourceUserId          String?            @db.Uuid
-  investmentId          String?            @db.Uuid
+  id                    String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String                      @db.Uuid
+  sourceUserId          String?                     @db.Uuid
+  investmentId          String?                     @db.Uuid
+  commissionScheduleId  String?                     @db.Uuid
   type                  IncomeType
-  status                IncomeStatus       @default(CREDITED)
+  status                IncomeStatus                @default(CREDITED)
   level                 Int?
-  percent               Decimal?           @db.Decimal(7, 4)
-  baseAmount            Decimal?           @db.Decimal(20, 6)
-  amount                Decimal            @db.Decimal(20, 6)
-  idempotencyKey        String             @unique @db.VarChar(160)
-  reversedByAdminId     String?            @db.Uuid
-  reversalWalletEntryId String?            @unique @db.Uuid
+  percent               Decimal?                    @db.Decimal(7, 4)
+  baseAmount            Decimal?                    @db.Decimal(20, 6)
+  amount                Decimal                     @db.Decimal(20, 6)
+  idempotencyKey        String                      @unique @db.VarChar(160)
+  reversedByAdminId     String?                     @db.Uuid
+  reversalWalletEntryId String?                     @unique @db.Uuid
   reversalSource        ActionSource?
-  reversalReason        String?            @db.VarChar(500)
-  description           String             @db.VarChar(500)
-  user                  UserProfile        @relation("IncomeOwner", fields: [userId], references: [id], onDelete: Restrict)
-  sourceUser            UserProfile?       @relation("IncomeSourceUser", fields: [sourceUserId], references: [id], onDelete: SetNull)
-  investment            Investment?        @relation(fields: [investmentId], references: [id], onDelete: SetNull)
-  reversedByAdmin       AdminProfile?      @relation("IncomeReversedBy", fields: [reversedByAdminId], references: [id], onDelete: SetNull)
-  reversalWalletEntry   WalletLedgerEntry? @relation("IncomeReversalLedger", fields: [reversalWalletEntryId], references: [id], onDelete: Restrict)
+  reversalReason        String?                     @db.VarChar(500)
+  description           String                      @db.VarChar(500)
+  user                  UserProfile                 @relation("IncomeOwner", fields: [userId], references: [id], onDelete: Restrict)
+  sourceUser            UserProfile?                @relation("IncomeSourceUser", fields: [sourceUserId], references: [id], onDelete: SetNull)
+  investment            Investment?                 @relation(fields: [investmentId], references: [id], onDelete: SetNull)
+  commissionSchedule    ReferralCommissionSchedule? @relation(fields: [commissionScheduleId], references: [id], onDelete: SetNull)
+  reversedByAdmin       AdminProfile?               @relation("IncomeReversedBy", fields: [reversedByAdminId], references: [id], onDelete: SetNull)
+  reversalWalletEntry   WalletLedgerEntry?          @relation("IncomeReversalLedger", fields: [reversalWalletEntryId], references: [id], onDelete: Restrict)
   roiCredit             RoiCredit?
-  creditedAt            DateTime           @default(now()) @db.Timestamptz(3)
-  reversedAt            DateTime?          @db.Timestamptz(3)
+  creditedAt            DateTime                    @default(now()) @db.Timestamptz(3)
+  reversedAt            DateTime?                   @db.Timestamptz(3)
 
   @@index([userId, type, creditedAt])
   @@index([sourceUserId])
+  @@index([commissionScheduleId, creditedAt])
   @@index([reversedByAdminId, reversedAt])
   @@map("income_ledger_entries")
+}
+
+model ReferralCommissionSchedule {
+  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  beneficiaryUserId String                   @db.Uuid
+  sourceUserId      String                   @db.Uuid
+  investmentId      String                   @db.Uuid
+  type              IncomeType
+  percent           Decimal                  @db.Decimal(7, 4)
+  baseAmount        Decimal                  @db.Decimal(20, 6)
+  paidPeriods       Int                      @default(0)
+  maxPeriods        Int                      @default(25)
+  nextDueAt         DateTime?                @db.Timestamptz(3)
+  status            CommissionScheduleStatus @default(ACTIVE)
+  beneficiary       UserProfile              @relation("CommissionBeneficiary", fields: [beneficiaryUserId], references: [id], onDelete: Restrict)
+  sourceUser        UserProfile              @relation("CommissionSource", fields: [sourceUserId], references: [id], onDelete: Restrict)
+  investment        Investment               @relation(fields: [investmentId], references: [id], onDelete: Restrict)
+  incomeEntries     IncomeLedgerEntry[]
+  startedAt         DateTime                 @default(now()) @db.Timestamptz(3)
+  completedAt       DateTime?                @db.Timestamptz(3)
+  createdAt         DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                 @updatedAt @db.Timestamptz(3)
+
+  @@unique([beneficiaryUserId, investmentId, type])
+  @@index([status, nextDueAt])
+  @@index([sourceUserId, status])
+  @@map("referral_commission_schedules")
+}
+
+model PlatformRevenueEntry {
+  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category            PlatformRevenueCategory
+  sourceUserId        String                  @db.Uuid
+  withdrawalRequestId String                  @unique @db.Uuid
+  amount              Decimal                 @db.Decimal(20, 6)
+  currency            String                  @default("USDT") @db.VarChar(8)
+  description         String                  @db.VarChar(500)
+  recordedByAdminId   String?                 @db.Uuid
+  sourceUser          UserProfile             @relation("PlatformRevenueSourceUser", fields: [sourceUserId], references: [id], onDelete: Restrict)
+  withdrawalRequest   WithdrawalRequest       @relation(fields: [withdrawalRequestId], references: [id], onDelete: Restrict)
+  recordedByAdmin     AdminProfile?           @relation("PlatformRevenueRecordedBy", fields: [recordedByAdminId], references: [id], onDelete: SetNull)
+  createdAt           DateTime                @default(now()) @db.Timestamptz(3)
+
+  @@index([category, createdAt])
+  @@index([sourceUserId, createdAt])
+  @@map("platform_revenue_entries")
 }
 
 model RoiRun {

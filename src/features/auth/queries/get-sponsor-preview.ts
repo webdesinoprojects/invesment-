@@ -31,7 +31,6 @@ export async function getSponsorPreview(
       select: {
         fullName: true,
         status: true,
-        isReferralActive: true,
       },
     });
     if (!sponsor) {
@@ -41,8 +40,7 @@ export async function getSponsorPreview(
       state: "found",
       memberId,
       fullName: sponsor.fullName,
-      isEligible:
-        sponsor.status === "ACTIVE" && sponsor.isReferralActive === true,
+      isEligible: sponsor.status !== "BLOCKED" && sponsor.status !== "ARCHIVED",
     };
   } catch {
     return { state: "unavailable", memberId };

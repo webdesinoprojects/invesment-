@@ -2,13 +2,11 @@ import {
   BadgeDollarSign,
   ChartNoAxesColumn,
   CircleDollarSign,
-  Landmark,
   UserRoundSearch,
 } from "lucide-react";
 import Link from "next/link";
 
 const shortcuts = [
-  { href: "/invest", label: "Invest", icon: Landmark },
   { href: "/team", label: "Team", icon: UserRoundSearch },
   { href: "/earnings", label: "Earnings", icon: ChartNoAxesColumn },
   // User deposits are currently administered by staff only.

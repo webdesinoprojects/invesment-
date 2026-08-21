@@ -11,6 +11,7 @@ export type WithdrawalSettings = WithdrawalConfiguration;
 const defaultSettings: WithdrawalSettings = {
   minimumAmount: "10",
   allowedDays: [1, 16],
+  feePercent: "10",
 };
 
 export async function getWithdrawalSettings(): Promise<WithdrawalSettings | null> {

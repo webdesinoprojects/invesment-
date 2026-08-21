@@ -20,7 +20,7 @@ export default async function WithdrawalPage() {
     <main className="mx-auto w-full max-w-6xl space-y-5 px-4 py-5 sm:px-6 sm:py-7">
       <PageHeader
         title="Withdrawal"
-        description="Request a USDT payout to your saved BEP-20 wallet."
+        description="Request a payout to your saved UPI ID or payout details."
         badge={
           <Badge
             variant="outline"
@@ -42,6 +42,7 @@ export default async function WithdrawalPage() {
         availableBalance={data.availableBalance}
         walletAddress={data.walletAddress}
         minimumAmount={data.minimumAmount}
+        feePercent={data.feePercent}
         isOpen={data.isOpen}
         requestToken={randomUUID()}
       />

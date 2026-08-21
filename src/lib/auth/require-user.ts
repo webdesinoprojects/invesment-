@@ -10,7 +10,7 @@ export type AuthenticatedUser = {
   authUserId: string;
   memberId: string;
   fullName: string;
-  status: "PENDING" | "ACTIVE" | "BLOCKED";
+  status: "PENDING" | "ACTIVE" | "BLOCKED" | "ARCHIVED";
 };
 
 export async function requireUser(): Promise<AuthenticatedUser> {
@@ -33,7 +33,7 @@ export async function requireUser(): Promise<AuthenticatedUser> {
     },
   });
 
-  if (!profile || profile.status === "BLOCKED") {
+  if (!profile || profile.status === "BLOCKED" || profile.status === "ARCHIVED") {
     await supabase.auth.signOut();
     redirect(profile?.status === "BLOCKED" ? "/login?account=blocked" : "/login");
   }

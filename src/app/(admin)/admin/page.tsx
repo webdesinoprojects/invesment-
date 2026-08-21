@@ -23,7 +23,7 @@ export default async function AdminDashboard() {
   const [
     totalMembers, activeMembers, pendingMembers, blockedMembers, newToday,
     pendingDeposits, pendingWithdrawals, processingWithdrawals, failedWithdrawals, failedRoi,
-    investments, approvedDeposits, paidWithdrawals, incomes, registrations, deposits, withdrawals, audits, walletBalances,
+    investments, approvedDeposits, paidWithdrawals, incomes, registrations, deposits, withdrawals, audits, walletBalances, platformRevenue,
     monthly,
   ] = await Promise.all([
     prisma.userProfile.count(), prisma.userProfile.count({where:{status:"ACTIVE"}}), prisma.userProfile.count({where:{status:"PENDING"}}), prisma.userProfile.count({where:{status:"BLOCKED"}}), prisma.userProfile.count({where:{createdAt:{gte:today.start,lt:today.end}}}),
@@ -39,6 +39,7 @@ export default async function AdminDashboard() {
     prisma.withdrawalRequest.findMany({take:5,orderBy:{submittedAt:"desc"},include:{user:{select:{fullName:true,memberId:true}}}}),
     prisma.auditLog.findMany({take:5,orderBy:{createdAt:"desc"}}),
     prisma.walletLedgerEntry.findMany({distinct:["userId"],orderBy:[{userId:"asc"},{sequence:"desc"}],select:{balanceAfter:true}}),
+    prisma.platformRevenueEntry.aggregate({_sum:{amount:true}}),
     Promise.all(months.map(async (m) => {
       const [members, dep, wit] = await Promise.all([
         prisma.userProfile.count({where:{createdAt:{gte:m.start,lt:m.end}}}),
@@ -58,8 +59,8 @@ export default async function AdminDashboard() {
   const todayRoiStatus = await todayRoiStatusPromise;
   const cards = [
     ["Total members",totalMembers,Users,"text-blue-600 bg-blue-50"],["Active members",activeMembers,UserCheck,"text-emerald-600 bg-emerald-50"],["Pending members",pendingMembers,Clock3,"text-amber-600 bg-amber-50"],["Blocked members",blockedMembers,ShieldAlert,"text-red-600 bg-red-50"],
-    ["New today",newToday,TrendingUp,"text-violet-600 bg-violet-50"],["Wallet balance",money(totalWalletBalance),WalletCards,"text-indigo-600 bg-indigo-50"],["Active investment",money(investments._sum.amount),CircleDollarSign,"text-emerald-600 bg-emerald-50"],["Approved deposits",money(approvedDeposits._sum.approvedAmount),ArrowDownToLine,"text-cyan-600 bg-cyan-50"],["Pending deposits",money(pendingDeposits._sum.amount),Clock3,"text-amber-600 bg-amber-50"],
-    ["Paid withdrawals",money(paidWithdrawals._sum.netAmount),ArrowUpFromLine,"text-slate-700 bg-slate-100"],["Pending withdrawals",money(pendingWithdrawals._sum.amount),Clock3,"text-orange-600 bg-orange-50"],["ROI distributed",money(income.DAILY_ROI),TrendingUp,"text-lime-700 bg-lime-50"],["Referral income",money((income.DIRECT_REFERRAL??new Prisma.Decimal(0)).plus(income.LEVEL_INCOME??new Prisma.Decimal(0))),Network,"text-fuchsia-600 bg-fuchsia-50"],
+    ["New today",newToday,TrendingUp,"text-violet-600 bg-violet-50"],["Member available earnings",money(totalWalletBalance),WalletCards,"text-indigo-600 bg-indigo-50"],["Active investment",money(investments._sum.amount),CircleDollarSign,"text-emerald-600 bg-emerald-50"],["Platform revenue",money(platformRevenue._sum.amount),CircleDollarSign,"text-fuchsia-600 bg-fuchsia-50"],["Approved deposits",money(approvedDeposits._sum.approvedAmount),ArrowDownToLine,"text-cyan-600 bg-cyan-50"],["Pending deposits",money(pendingDeposits._sum.amount),Clock3,"text-amber-600 bg-amber-50"],
+    ["Paid withdrawals",money(paidWithdrawals._sum.netAmount),ArrowUpFromLine,"text-slate-700 bg-slate-100"],["Pending withdrawals",money(pendingWithdrawals._sum.amount),Clock3,"text-orange-600 bg-orange-50"],["ROI distributed",money(income.DAILY_ROI),TrendingUp,"text-lime-700 bg-lime-50"],["Referral income",money((income.DIRECT_REFERRAL??new Prisma.Decimal(0)).plus(income.DIRECT_REFERRAL_BONUS??0).plus(income.MONTHLY_DIRECT??0).plus(income.LEVEL_INCOME??0).plus(income.MONTHLY_LEVEL??0)),Network,"text-fuchsia-600 bg-fuchsia-50"],
   ] as const;
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
@@ -76,7 +77,7 @@ export default async function AdminDashboard() {
       <div className="grid gap-5 xl:grid-cols-2">
         <Table title="Recent registrations" headers={["Member","Email","Status","Date"]} rows={registrations.map(x=>[`${x.fullName} · ${x.memberId}`,x.email,x.status,date(x.createdAt)])}/>
         <Table title="Latest deposit requests" headers={["Member","Transaction","Amount","Status"]} rows={deposits.map(x=>[`${x.user.fullName} · ${x.user.memberId}`,x.transactionHash?.slice(0,14)??"Not supplied",money(x.amount),x.status])}/>
-        <Table title="Latest withdrawal requests" headers={["Member","Wallet","Amount","Status"]} rows={withdrawals.map(x=>[`${x.user.fullName} · ${x.user.memberId}`,`${x.walletAddress.slice(0,12)}…`,money(x.amount),x.status])}/>
+        <Table title="Latest withdrawal requests" headers={["Member","Payout details","Amount","Status"]} rows={withdrawals.map(x=>[`${x.user.fullName} · ${x.user.memberId}`,x.walletAddress.length > 15 ? `${x.walletAddress.slice(0,12)}...` : x.walletAddress,money(x.amount),x.status])}/>
         <Table title="Recent audit activity" headers={["Action","Entity","Outcome","Date"]} rows={audits.map(x=>[x.action,x.entityType,x.outcome,date(x.createdAt)])}/>
       </div>
     </div>

@@ -136,7 +136,7 @@ async function renderMemberReferralInvestigation(userId: string) {
     prisma.incomeLedgerEntry.findMany({
       where: {
         sourceUserId: member.id,
-        type: { in: ["DIRECT_REFERRAL", "LEVEL_INCOME"] },
+        type: { in: ["DIRECT_REFERRAL", "DIRECT_REFERRAL_BONUS", "MONTHLY_DIRECT", "LEVEL_INCOME", "MONTHLY_LEVEL"] },
       },
       orderBy: { creditedAt: "asc" },
       include: {
@@ -255,7 +255,7 @@ async function renderAnalytics() {
     prisma.incomeLedgerEntry.groupBy({
       by: ["type", "level"],
       where: {
-        type: { in: ["DIRECT_REFERRAL", "LEVEL_INCOME"] },
+        type: { in: ["DIRECT_REFERRAL", "DIRECT_REFERRAL_BONUS", "MONTHLY_DIRECT", "LEVEL_INCOME", "MONTHLY_LEVEL"] },
         status: "CREDITED",
       },
       _count: true,

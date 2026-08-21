@@ -6,11 +6,8 @@ export const walletAddressSchema = z.object({
   walletAddress: z
     .string()
     .trim()
-    .max(64, "Wallet address is too long.")
-    .refine(
-      (value) => value === "" || /^0x[a-fA-F0-9]{40}$/.test(value),
-      "Enter a valid BEP-20 wallet address.",
-    ),
+    .max(64, "Payout details are too long.")
+    .refine((value) => value === "" || value.length >= 3, "Enter a valid UPI ID or payout detail."),
 });
 
 export const passwordChangeSchema = z

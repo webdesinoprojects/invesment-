@@ -25,6 +25,8 @@ export async function getWithdrawalPageData(userId: string): Promise<WithdrawalP
       select: {
         id: true,
         amount: true,
+        feeAmount: true,
+        netAmount: true,
         walletAddress: true,
         status: true,
         paymentHash: true,
@@ -39,11 +41,14 @@ export async function getWithdrawalPageData(userId: string): Promise<WithdrawalP
     availableBalance: latestLedgerEntry?.balanceAfter.toString() ?? "0",
     walletAddress: profile?.bep20WalletAddress ?? null,
     minimumAmount: settings?.minimumAmount ?? null,
+    feePercent: settings?.feePercent ?? null,
     allowedDays: settings?.allowedDays ?? [],
     isOpen: settings ? isWithdrawalOpen(settings.allowedDays) : false,
     history: requests.map((request) => ({
       id: request.id,
       amount: request.amount.toString(),
+      feeAmount: request.feeAmount.toString(),
+      netAmount: (request.netAmount ?? request.amount.minus(request.feeAmount)).toString(),
       walletAddress: request.walletAddress,
       status: request.status,
       submittedAt: request.submittedAt.toISOString(),

@@ -6,6 +6,7 @@ import { changeMemberStatusSchema } from "../../src/features/admin/members/schem
 import { deleteMemberSchema } from "../../src/features/admin/members/schemas/delete-member.ts";
 import { transitionInvestmentSchema } from "../../src/features/admin/investments/schemas/transition-investment.ts";
 import { manualActivationSchema } from "../../src/features/admin/investments/schemas/manual-activation.ts";
+import { remainingCommissionPeriods } from "../../src/features/referral/services/commission-schedules.ts";
 import { can } from "../../src/features/admin/permissions.ts";
 import {
   depositConfigurationSchema,
@@ -27,11 +28,11 @@ test("deposit rejection requires a reason", () => {
   assert.equal(reviewDepositSchema.safeParse({ id, decision: "REJECT", reason: "" }).success, false);
   assert.equal(reviewDepositSchema.safeParse({ id, decision: "REJECT", reason: "Hash does not match", confirmed: "true" }).success, true);
 });
-test("withdrawal payment requires a normalized BSC hash", () => {
-  assert.equal(transitionWithdrawalSchema.safeParse({ id, transition: "PAY", paymentHash: "0x123", reason: "" }).success, false);
-  const parsed = transitionWithdrawalSchema.safeParse({ id, transition: "PAY", paymentHash: `0x${"AB".repeat(32)}`, reason: "Paid externally", confirmed: "true" });
+test("withdrawal payment requires an external payment reference", () => {
+  assert.equal(transitionWithdrawalSchema.safeParse({ id, transition: "PAY", paymentHash: "x", reason: "" }).success, false);
+  const parsed = transitionWithdrawalSchema.safeParse({ id, transition: "PAY", paymentHash: "UPI-20260821-001", reason: "Paid externally" });
   assert.equal(parsed.success, true);
-  if (parsed.success) assert.equal(parsed.data.paymentHash, `0x${"ab".repeat(32)}`);
+  if (parsed.success) assert.equal(parsed.data.paymentHash, "UPI-20260821-001");
 });
 test("withdrawal reject and failure require reasons", () => {
   assert.equal(transitionWithdrawalSchema.safeParse({ id, transition: "REJECT", reason: "" }).success, false);
@@ -72,9 +73,11 @@ test("shared configuration schemas reject invalid financial settings", () => {
     minimumAmount: "50000000000000",
     monthlyRoiPercent: "8",
     durationMonths: 25,
-    directCommissionPercent: "101",
-    levelCommissionPercent: "0.25",
-    maxLevelDepth: 5,
+    directBonusPercent: "5",
+    directMonthlyPercent: "101",
+    levelMonthlyPercent: "0.25",
+    directQualificationCount: 5,
+    branchQualificationCount: 5,
   }).success, false);
 });
 
@@ -82,24 +85,50 @@ test("withdrawal settings normalize duplicate allowed days", () => {
   const parsed = withdrawalConfigurationSchema.parse({
     minimumAmount: "10",
     allowedDays: [16, 1, 16, 1],
+    feePercent: "10",
   });
   assert.deepEqual(parsed.allowedDays, [1, 16]);
 });
 
-test("manual activation requires an exact user UUID and explicit confirmation", () => {
+test("manual investment credit requires an exact user UUID without redundant confirmation", () => {
   const base = {
     userId: id,
     amount: "10",
     reason: "Support-approved activation",
     requestToken: "10000000-0000-4000-8000-000000000000",
   };
-  assert.equal(manualActivationSchema.safeParse(base).success, false);
-  assert.equal(manualActivationSchema.safeParse({ ...base, confirmed: "true" }).success, true);
+  assert.equal(manualActivationSchema.safeParse(base).success, true);
   assert.equal(manualActivationSchema.safeParse({
     ...base,
     userId: "topa singh",
-    confirmed: "true",
   }).success, false);
+});
+
+test("monthly commissions cannot extend beyond the source investment term", () => {
+  assert.equal(
+    remainingCommissionPeriods(
+      new Date("2026-01-01T00:00:00.000Z"),
+      25,
+      new Date("2026-01-01T00:00:00.000Z"),
+    ),
+    25,
+  );
+  assert.equal(
+    remainingCommissionPeriods(
+      new Date("2026-01-01T00:00:00.000Z"),
+      25,
+      new Date("2027-12-15T00:00:00.000Z"),
+    ),
+    2,
+  );
+  assert.equal(
+    remainingCommissionPeriods(
+      new Date("2026-01-01T00:00:00.000Z"),
+      25,
+      new Date("2028-02-01T00:00:00.000Z"),
+    ),
+    0,
+  );
 });
 
 test("audit access and sidebar permissions use the central role matrix", () => {

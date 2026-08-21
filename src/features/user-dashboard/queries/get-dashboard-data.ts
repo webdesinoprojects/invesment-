@@ -86,8 +86,14 @@ export async function getDashboardData(
     const value = row._sum.amount?.toString() ?? "0";
     totalIncome = totalIncome.plus(value);
     if (row.type === "DAILY_ROI") income.dailyRoi = value;
-    if (row.type === "DIRECT_REFERRAL") income.directReferral = value;
-    if (row.type === "LEVEL_INCOME") income.levelIncome = value;
+    if (
+      row.type === "DIRECT_REFERRAL" ||
+      row.type === "DIRECT_REFERRAL_BONUS" ||
+      row.type === "MONTHLY_DIRECT"
+    ) income.directReferral = new Prisma.Decimal(income.directReferral).plus(value).toString();
+    if (row.type === "LEVEL_INCOME" || row.type === "MONTHLY_LEVEL") {
+      income.levelIncome = new Prisma.Decimal(income.levelIncome).plus(value).toString();
+    }
     if (row.type === "RANK_REWARD") income.rankRewards = value;
     if (row.type === "SALARY") income.salary = value;
   }

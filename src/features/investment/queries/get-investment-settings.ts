@@ -12,9 +12,11 @@ const defaultSettings: InvestmentSettings = {
   minimumAmount: "10",
   monthlyRoiPercent: "8",
   durationMonths: 25,
-  directCommissionPercent: "1",
-  levelCommissionPercent: "0.25",
-  maxLevelDepth: 5,
+  directBonusPercent: "5",
+  directMonthlyPercent: "1",
+  levelMonthlyPercent: "0.25",
+  directQualificationCount: 5,
+  branchQualificationCount: 5,
 };
 
 export async function getInvestmentSettings(): Promise<InvestmentSettings | null> {

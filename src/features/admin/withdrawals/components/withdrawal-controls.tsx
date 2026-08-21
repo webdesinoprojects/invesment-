@@ -37,7 +37,7 @@ export function WithdrawalControls({
         {status === "PROCESSING" ? (
           <input
             name="paymentHash"
-            placeholder="0x… BSC payment hash (required for Pay)"
+            placeholder="UPI or bank payment reference (required)"
             className="w-full rounded-lg border border-slate-200 p-2 text-xs"
           />
         ) : null}
@@ -47,10 +47,6 @@ export function WithdrawalControls({
           placeholder="Reason or payment note"
           className="w-full rounded-lg border border-slate-200 p-2 text-xs"
         />
-        <label className="flex items-start gap-2 text-xs text-slate-600">
-          <input type="checkbox" name="confirmed" value="true" required className="mt-0.5" />
-          I confirm the member, amount, current status and financial consequence shown above.
-        </label>
         {state.message ? (
           <p className={`text-xs ${state.ok ? "text-emerald-700" : "text-red-600"}`}>
             {state.message}

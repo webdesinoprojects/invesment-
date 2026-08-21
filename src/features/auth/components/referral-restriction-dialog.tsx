@@ -21,8 +21,8 @@ export function ReferralRestrictionDialog({ open }: { open: boolean }) {
         <AlertDialogHeader>
           <AlertDialogTitle>Referral unavailable</AlertDialogTitle>
           <AlertDialogDescription>
-            Referral privileges are available only to activated partners. Ask
-            your referrer to activate their account before using this invite.
+            This referral cannot be used because the referring account is not
+            currently available. Ask the referrer to contact support.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

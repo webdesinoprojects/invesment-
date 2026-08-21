@@ -13,10 +13,12 @@ import { initialActionResult } from "@/types/action-result";
 export function WithdrawalRequestForm({
   walletAddress,
   minimumAmount,
+  feePercent,
   requestToken,
 }: {
   walletAddress: string;
   minimumAmount: string;
+  feePercent: string;
   requestToken: string;
 }) {
   const [state, action] = useActionState(createWithdrawalRequestAction, initialActionResult);
@@ -25,9 +27,9 @@ export function WithdrawalRequestForm({
     <form action={action} className="space-y-4" noValidate>
       <input type="hidden" name="requestToken" value={requestToken} />
       <div className="space-y-1.5">
-        <Label htmlFor="withdrawalWallet">USDT (BEP-20) address</Label>
+        <Label htmlFor="withdrawalWallet">UPI ID / payout details</Label>
         <Input id="withdrawalWallet" value={walletAddress} readOnly className="h-11 font-mono text-xs" />
-        <p className="text-xs text-muted-foreground">Change this address from your Profile.</p>
+        <p className="text-xs text-muted-foreground">Change these details from your Profile.</p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="amount">Amount (USDT)</Label>
@@ -56,6 +58,9 @@ export function WithdrawalRequestForm({
         <FormFieldError errors={state.fieldErrors?.securityPin} />
       </div>
       <ActionFeedback state={state} />
+      <p className="text-xs text-muted-foreground">
+        A {feePercent}% processing fee is deducted from every paid withdrawal.
+      </p>
       <SubmitButton idleLabel="Request withdrawal" pendingLabel="Submitting..." />
     </form>
   );

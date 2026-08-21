@@ -27,8 +27,10 @@ export function WithdrawalHistoryTable({ history }: { history: WithdrawalHistory
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Wallet</TableHead>
-                <TableHead>Amount</TableHead>
+                <TableHead>Payout details</TableHead>
+                <TableHead>Gross</TableHead>
+                <TableHead>Fee</TableHead>
+                <TableHead>Member payout</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -44,6 +46,8 @@ export function WithdrawalHistoryTable({ history }: { history: WithdrawalHistory
                   </TableCell>
                   <TableCell className="font-mono text-xs">{shortValue(item.walletAddress)}</TableCell>
                   <TableCell className="font-semibold tabular-nums">{formatUsd(item.amount)}</TableCell>
+                  <TableCell className="tabular-nums">{formatUsd(item.feeAmount)}</TableCell>
+                  <TableCell className="font-semibold tabular-nums">{formatUsd(item.netAmount)}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <StatusBadge status={item.status} />

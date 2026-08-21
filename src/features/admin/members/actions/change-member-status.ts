@@ -12,9 +12,25 @@ export async function changeMemberStatusAction(_state: AdminActionResult, formDa
   const admin = await requireAdminPermission("members.manage");
   try {
     const result = await changeMemberStatus({ ...parsed.data, adminId: admin.adminId });
-    if (!result.ok) return { ok: false, code: result.code, message: result.code === "NOT_FOUND" ? "Member not found." : "Member already has this status." };
+    if (!result.ok) return {
+      ok: false,
+      code: result.code,
+      message: result.code === "NOT_FOUND"
+        ? "Member not found."
+        : result.code === "ACTIVE_INVESTMENT"
+          ? "Cancel or complete the member's active investments before archiving."
+          : "Member already has this status.",
+    };
     revalidatePath("/admin");
-    return { ok: true, data: undefined, message: parsed.data.status === "BLOCKED" ? "Member blocked." : "Member activated." };
+    return {
+      ok: true,
+      data: undefined,
+      message: parsed.data.status === "BLOCKED"
+        ? "Member blocked."
+        : parsed.data.status === "ARCHIVED"
+          ? "Member archived."
+          : "Member activated.",
+    };
   } catch {
     return { ok: false, code: "FAILED", message: "The member status could not be changed." };
   }

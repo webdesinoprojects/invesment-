@@ -17,10 +17,12 @@ export async function createWithdrawalRequest({
   userId,
   amount,
   requestToken,
+  feePercent,
 }: {
   userId: string;
   amount: string;
   requestToken: string;
+  feePercent: string;
 }): Promise<CreateWithdrawalResult> {
   const db = getPrisma();
   const idempotencyKey = `withdrawal-request:${requestToken}`;
@@ -28,7 +30,7 @@ export async function createWithdrawalRequest({
   for (let attempt = 1; attempt <= MAX_TRANSACTION_ATTEMPTS; attempt += 1) {
     try {
       return await db.$transaction(
-        async (tx) => reserveWithdrawal(tx, { userId, amount, idempotencyKey }),
+        async (tx) => reserveWithdrawal(tx, { userId, amount, feePercent, idempotencyKey }),
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
     } catch (error) {
@@ -43,7 +45,7 @@ export async function createWithdrawalRequest({
 
 async function reserveWithdrawal(
   tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">,
-  input: { userId: string; amount: string; idempotencyKey: string },
+  input: { userId: string; amount: string; feePercent: string; idempotencyKey: string },
 ): Promise<CreateWithdrawalResult> {
   const duplicate = await tx.walletLedgerEntry.findUnique({
     where: { idempotencyKey: input.idempotencyKey },
@@ -65,6 +67,10 @@ async function reserveWithdrawal(
   if (!profile?.bep20WalletAddress) return { ok: false, code: "WALLET_NOT_CONFIGURED" };
 
   const requestedAmount = new Prisma.Decimal(input.amount);
+  const feeAmount = requestedAmount
+    .mul(new Prisma.Decimal(input.feePercent))
+    .div(100)
+    .toDecimalPlaces(6, Prisma.Decimal.ROUND_HALF_UP);
   const availableBalance = latestLedgerEntry?.balanceAfter ?? new Prisma.Decimal(0);
   if (requestedAmount.greaterThan(availableBalance)) {
     return { ok: false, code: "INSUFFICIENT_FUNDS" };
@@ -90,7 +96,9 @@ async function reserveWithdrawal(
       id: requestId,
       userId: input.userId,
       amount: requestedAmount,
-      netAmount: requestedAmount,
+      feeAmount,
+      netAmount: requestedAmount.minus(feeAmount),
+      network: "MANUAL",
       walletAddress: profile.bep20WalletAddress,
       holdLedgerEntryId: hold.id,
     },

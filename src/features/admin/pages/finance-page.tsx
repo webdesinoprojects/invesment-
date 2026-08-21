@@ -45,7 +45,7 @@ export async function renderInvestmentsPage(context: AdminPageContext) {
           page: context.page,
           hasMore: data.length > context.pageSize,
         }}
-        title={manual ? "Manual activation" : "All investments"}
+        title={manual ? "Credit investment" : "All investments"}
         description="Monitor and control every active investment contract."
         headers={["Member", "Amount", "ROI", "Duration", "Paid out", "Status", "Activated", "Actions"]}
         rows={data.slice(0, context.pageSize).map((investment) => ({
@@ -184,6 +184,60 @@ export async function renderIncomeLedgerPage(context: AdminPageContext) {
           entry.status,
           entry.description,
           adminDate(entry.creditedAt),
+        ],
+      }))}
+    />
+  );
+}
+
+export async function renderPlatformRevenuePage(context: AdminPageContext) {
+  await requireAdminPermission("income.view");
+  const data = await getPrisma().platformRevenueEntry.findMany({
+    ...(context.query
+      ? {
+          where: {
+            sourceUser: {
+              is: {
+                OR: [
+                  { memberId: { contains: context.query, mode: "insensitive" as const } },
+                  { fullName: { contains: context.query, mode: "insensitive" as const } },
+                ],
+              },
+            },
+          },
+        }
+      : {}),
+    include: {
+      sourceUser: { select: { fullName: true, memberId: true } },
+      withdrawalRequest: {
+        select: { amount: true, netAmount: true, paymentHash: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    skip: context.skip,
+    take: context.pageSize + 1,
+  });
+  return (
+    <Listing
+      pagination={{
+        path: "/admin/platform-revenue",
+        query: context.query,
+        page: context.page,
+        hasMore: data.length > context.pageSize,
+      }}
+      title="Platform revenue"
+      description="Auditable fees retained by the platform from completed financial operations."
+      headers={["Source member", "Category", "Gross withdrawal", "Platform fee", "Paid to member", "Payment reference", "Recorded"]}
+      rows={data.slice(0, context.pageSize).map((entry) => ({
+        id: entry.id,
+        cells: [
+          `${entry.sourceUser.fullName} - ${entry.sourceUser.memberId}`,
+          entry.category,
+          adminMoney(entry.withdrawalRequest.amount),
+          adminMoney(entry.amount),
+          adminMoney(entry.withdrawalRequest.netAmount ?? 0),
+          entry.withdrawalRequest.paymentHash ?? "-",
+          adminDate(entry.createdAt),
         ],
       }))}
     />

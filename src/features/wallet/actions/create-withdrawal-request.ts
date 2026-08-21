@@ -41,7 +41,7 @@ export async function createWithdrawalRequestAction(
     select: { bep20WalletAddress: true },
   });
   if (!profile?.bep20WalletAddress) {
-    return failure("WALLET_NOT_CONFIGURED", "Add your BEP-20 wallet address in Profile first.");
+    return failure("WALLET_NOT_CONFIGURED", "Add your UPI ID or payout details in Profile first.");
   }
   const pinVerification = await verifyUserSecurityPin(user.id, parsed.data.securityPin);
   if (pinVerification.status === "LOCKED") {
@@ -65,6 +65,7 @@ export async function createWithdrawalRequestAction(
       userId: user.id,
       amount: parsed.data.amount,
       requestToken: parsed.data.requestToken,
+      feePercent: settings.feePercent,
     });
     if (!result.ok) return mapServiceFailure(result.code);
   } catch {
@@ -90,5 +91,5 @@ function failure(
 function mapServiceFailure(code: "DUPLICATE_REQUEST" | "INSUFFICIENT_FUNDS" | "WALLET_NOT_CONFIGURED"): ActionResult {
   if (code === "DUPLICATE_REQUEST") return failure(code, "This withdrawal request was already submitted.");
   if (code === "INSUFFICIENT_FUNDS") return failure(code, "Your available balance is insufficient.");
-  return failure(code, "Add your BEP-20 wallet address in Profile first.");
+  return failure(code, "Add your UPI ID or payout details in Profile first.");
 }

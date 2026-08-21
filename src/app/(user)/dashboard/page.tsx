@@ -15,7 +15,10 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6 sm:py-7">
-      <WalletBalanceCard balance={dashboard.walletBalance} />
+      <WalletBalanceCard
+        investment={dashboard.activeInvestment}
+        earnings={dashboard.walletBalance}
+      />
       <ReferralCard
         directTeamCount={dashboard.directTeamCount}
         totalDownlineCount={dashboard.totalDownlineCount}

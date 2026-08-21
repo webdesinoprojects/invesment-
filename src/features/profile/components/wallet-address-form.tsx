@@ -16,12 +16,12 @@ export function WalletAddressForm({ walletAddress }: { walletAddress: string }) 
   return (
     <form action={action} className="space-y-3" noValidate>
       <div className="space-y-1.5">
-        <Label htmlFor="walletAddress">USDT (BEP-20) address</Label>
+        <Label htmlFor="walletAddress">UPI ID / payout details</Label>
         <Input
           id="walletAddress"
           name="walletAddress"
           defaultValue={walletAddress}
-          placeholder="0x... wallet address"
+          placeholder="name@bank or other payout detail"
           autoComplete="off"
           spellCheck={false}
           aria-invalid={Boolean(state.fieldErrors?.walletAddress)}
@@ -29,11 +29,11 @@ export function WalletAddressForm({ walletAddress }: { walletAddress: string }) 
         />
         <FormFieldError errors={state.fieldErrors?.walletAddress} />
         <p className="text-xs text-muted-foreground">
-          Approved withdrawals are sent to this address. Leave it blank to remove it.
+          Approved withdrawals are sent using these details. Leave blank to remove them.
         </p>
       </div>
       <ActionFeedback state={state} />
-      <SubmitButton idleLabel="Save wallet address" pendingLabel="Saving..." />
+      <SubmitButton idleLabel="Save payout details" pendingLabel="Saving..." />
     </form>
   );
 }

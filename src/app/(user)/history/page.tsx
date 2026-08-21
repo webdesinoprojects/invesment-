@@ -27,7 +27,7 @@ export default async function HistoryPage({
     <main className="mx-auto w-full max-w-6xl space-y-5 px-4 py-5 sm:px-6 sm:py-7">
       <PageHeader
         title="Wallet history"
-        description="Track wallet movements, withdrawals, and deposit requests."
+        description="Track earnings, withdrawals, and historical deposit requests."
       />
       <HistoryTabs activeTab={tab} />
       {data.tab === "main" ? (
