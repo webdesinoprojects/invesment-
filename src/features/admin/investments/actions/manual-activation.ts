@@ -144,7 +144,14 @@ export async function manualActivationAction(
       data: { nextRequestToken: randomUUID() },
       message: "Admin-funded investment credited and commission rules evaluated.",
     };
-  } catch {
+  } catch (error) {
+    console.error("Admin investment credit failed.", {
+      name: error instanceof Error ? error.name : "UnknownError",
+      code:
+        typeof error === "object" && error !== null && "code" in error
+          ? String(error.code)
+          : undefined,
+    });
     return { ok: false, code: "FAILED", message: "Investment credit failed." };
   }
 }

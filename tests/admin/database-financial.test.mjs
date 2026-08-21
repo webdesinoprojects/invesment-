@@ -253,6 +253,22 @@ test("referral bonuses unlock at five direct and five branch investments", { ski
   }), 5);
   assert.equal((await latestBalance(sponsor.id)).toFixed(6), "30.000000");
 
+  const sixthDirect = await createUser({ sponsorId: sponsor.id });
+  const sixthDirectInvestment = await activateInvestment({
+    targetUserId: sixthDirect.id,
+    amount: "100",
+    requestToken: randomUUID(),
+    settings,
+    adminId: admin.id,
+  });
+  assert.equal(sixthDirectInvestment.ok, true, "five directs is a minimum, not a cap");
+  assert.equal(await prisma.incomeLedgerEntry.count({
+    where: { userId: sponsor.id, type: "DIRECT_REFERRAL_BONUS" },
+  }), 6);
+  assert.equal(await prisma.incomeLedgerEntry.count({
+    where: { userId: sponsor.id, type: "MONTHLY_DIRECT" },
+  }), 6);
+
   const repeatMemberInvestment = await activateInvestment({
     targetUserId: directMembers[0].id,
     amount: "100",
@@ -263,7 +279,7 @@ test("referral bonuses unlock at five direct and five branch investments", { ski
   assert.equal(repeatMemberInvestment.ok, true);
   assert.equal(await prisma.incomeLedgerEntry.count({
     where: { userId: sponsor.id, type: "DIRECT_REFERRAL_BONUS" },
-  }), 5, "the one-time direct bonus must not repeat for later investments");
+  }), 6, "the one-time direct bonus must not repeat for later investments");
 
   const branchOwner = directMembers[0];
   for (let index = 0; index < 5; index += 1) {

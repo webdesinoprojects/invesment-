@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 export function AdminActionDialog({
   triggerLabel,
@@ -9,16 +9,23 @@ export function AdminActionDialog({
   description,
   children,
   triggerClassName = "rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white",
+  closeSignal,
 }: {
   triggerLabel: string;
   title: string;
   description: string;
   children: ReactNode;
   triggerClassName?: string;
+  closeSignal?: string | null;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+
+  useEffect(() => {
+    if (closeSignal) dialogRef.current?.close();
+  }, [closeSignal]);
+
   return (
     <>
       <button

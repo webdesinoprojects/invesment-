@@ -19,7 +19,8 @@ const initialState: AdminActionResult<{ nextRequestToken: string | null }> = {
 export function ManualActivationForm() {
   const [state, action, pending] = useActionState(manualActivationAction, initialState);
   const [initialToken] = useState(() => crypto.randomUUID());
-  const token = state.ok && state.data.nextRequestToken ? state.data.nextRequestToken : initialToken;
+  const successToken = state.ok ? state.data.nextRequestToken : null;
+  const token = successToken ?? initialToken;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ManualActivationMemberResult[]>([]);
   const [selected, setSelected] = useState<ManualActivationMemberResult | null>(null);
@@ -120,6 +121,7 @@ export function ManualActivationForm() {
             triggerLabel="Review credit"
             title="Confirm investment credit"
             description={`${selected.fullName} - ${selected.memberId} - credit ${amount || "not entered"} USDT. This creates an active investment and evaluates referral commissions.`}
+            closeSignal={successToken}
           >
             <form action={action} className="space-y-3">
               <input type="hidden" name="requestToken" value={token} />

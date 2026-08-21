@@ -47,6 +47,7 @@ async function creditIncome(
     baseAmount: Prisma.Decimal;
     idempotencyKey: string;
     description: string;
+    knownMissing?: boolean;
   },
 ): Promise<void> {
   const amount = input.baseAmount
@@ -55,11 +56,13 @@ async function creditIncome(
     .toDecimalPlaces(6, Prisma.Decimal.ROUND_HALF_UP);
   if (amount.isZero()) return;
 
-  const existing = await tx.incomeLedgerEntry.findUnique({
-    where: { idempotencyKey: input.idempotencyKey },
-    select: { id: true },
-  });
-  if (existing) return;
+  if (!input.knownMissing) {
+    const existing = await tx.incomeLedgerEntry.findUnique({
+      where: { idempotencyKey: input.idempotencyKey },
+      select: { id: true },
+    });
+    if (existing) return;
+  }
 
   const latest = await tx.walletLedgerEntry.findFirst({
     where: { userId: input.beneficiaryUserId },
@@ -139,19 +142,22 @@ async function createScheduleWithInitialCredit(
     percent: string;
     baseAmount: Prisma.Decimal;
     maxPeriods: number;
+    knownMissing?: boolean;
   },
 ): Promise<void> {
-  const existing = await tx.referralCommissionSchedule.findUnique({
-    where: {
-      beneficiaryUserId_investmentId_type: {
-        beneficiaryUserId: input.beneficiaryUserId,
-        investmentId: input.investmentId,
-        type: input.type,
+  if (!input.knownMissing) {
+    const existing = await tx.referralCommissionSchedule.findUnique({
+      where: {
+        beneficiaryUserId_investmentId_type: {
+          beneficiaryUserId: input.beneficiaryUserId,
+          investmentId: input.investmentId,
+          type: input.type,
+        },
       },
-    },
-    select: { id: true },
-  });
-  if (existing) return;
+      select: { id: true },
+    });
+    if (existing) return;
+  }
 
   const startedAt = new Date();
   const schedule = await tx.referralCommissionSchedule.create({
@@ -185,7 +191,48 @@ async function createScheduleWithInitialCredit(
       input.type === "MONTHLY_DIRECT"
         ? "Monthly direct-team commission, period 1."
         : "Monthly level-two commission, period 1.",
+    knownMissing: true,
   });
+}
+
+async function createMissingSchedules(
+  tx: TransactionClient,
+  input: {
+    beneficiaryUserId: string;
+    investments: Awaited<ReturnType<typeof activeDirectInvestments>>;
+    type: "MONTHLY_DIRECT" | "MONTHLY_LEVEL";
+    percent: string;
+  },
+): Promise<void> {
+  const existing = await tx.referralCommissionSchedule.findMany({
+    where: {
+      beneficiaryUserId: input.beneficiaryUserId,
+      investmentId: { in: input.investments.map((investment) => investment.id) },
+      type: input.type,
+    },
+    select: { investmentId: true },
+  });
+  const scheduledInvestmentIds = new Set(existing.map((row) => row.investmentId));
+
+  for (const investment of input.investments) {
+    if (scheduledInvestmentIds.has(investment.id)) continue;
+    const maxPeriods = remainingCommissionPeriods(
+      investment.activatedAt,
+      investment.durationMonths,
+      new Date(),
+    );
+    if (maxPeriods === 0) continue;
+    await createScheduleWithInitialCredit(tx, {
+      beneficiaryUserId: input.beneficiaryUserId,
+      sourceUserId: investment.userId,
+      investmentId: investment.id,
+      type: input.type,
+      percent: input.percent,
+      baseAmount: investment.amount,
+      maxPeriods,
+      knownMissing: true,
+    });
+  }
 }
 
 async function activeDirectInvestments(tx: TransactionClient, sponsorId: string) {
@@ -233,23 +280,12 @@ export async function evaluateCommissionQualifications(
     const investments = await activeDirectInvestments(tx, activatedUser.sponsorId);
     const directUsers = new Set(investments.map((investment) => investment.userId));
     if (directUsers.size >= input.settings.directQualificationCount) {
-      for (const investment of investments) {
-        const maxPeriods = remainingCommissionPeriods(
-          investment.activatedAt,
-          investment.durationMonths,
-          new Date(),
-        );
-        if (maxPeriods === 0) continue;
-        await createScheduleWithInitialCredit(tx, {
-          beneficiaryUserId: activatedUser.sponsorId,
-          sourceUserId: investment.userId,
-          investmentId: investment.id,
-          type: "MONTHLY_DIRECT",
-          percent: input.settings.directMonthlyPercent,
-          baseAmount: investment.amount,
-          maxPeriods,
-        });
-      }
+      await createMissingSchedules(tx, {
+        beneficiaryUserId: activatedUser.sponsorId,
+        investments,
+        type: "MONTHLY_DIRECT",
+        percent: input.settings.directMonthlyPercent,
+      });
     }
   }
 
@@ -266,23 +302,12 @@ export async function evaluateCommissionQualifications(
   const branchUsers = new Set(branchInvestments.map((investment) => investment.userId));
   if (branchUsers.size < input.settings.branchQualificationCount) return;
 
-  for (const investment of branchInvestments) {
-    const maxPeriods = remainingCommissionPeriods(
-      investment.activatedAt,
-      investment.durationMonths,
-      new Date(),
-    );
-    if (maxPeriods === 0) continue;
-    await createScheduleWithInitialCredit(tx, {
-      beneficiaryUserId: levelBeneficiaryId,
-      sourceUserId: investment.userId,
-      investmentId: investment.id,
-      type: "MONTHLY_LEVEL",
-      percent: input.settings.levelMonthlyPercent,
-      baseAmount: investment.amount,
-      maxPeriods,
-    });
-  }
+  await createMissingSchedules(tx, {
+    beneficiaryUserId: levelBeneficiaryId,
+    investments: branchInvestments,
+    type: "MONTHLY_LEVEL",
+    percent: input.settings.levelMonthlyPercent,
+  });
 }
 
 export { addUtcMonths, creditIncome, remainingCommissionPeriods };

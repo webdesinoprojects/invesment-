@@ -10,6 +10,8 @@ import {
 import { getPrisma } from "@/lib/db/prisma";
 
 const MAX_TRANSACTION_ATTEMPTS = 3;
+const ACTIVATION_TRANSACTION_MAX_WAIT_MS = 10_000;
+const ACTIVATION_TRANSACTION_TIMEOUT_MS = 30_000;
 
 function hasPrismaCode(error: unknown, code: string): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === code;
@@ -115,7 +117,11 @@ export async function activateInvestment({
 
           return { ok: true as const, investmentId: investment.id };
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          maxWait: ACTIVATION_TRANSACTION_MAX_WAIT_MS,
+          timeout: ACTIVATION_TRANSACTION_TIMEOUT_MS,
+        },
       );
     } catch (error) {
       if (hasPrismaCode(error, "P2002")) return { ok: false, code: "DUPLICATE_REQUEST" };

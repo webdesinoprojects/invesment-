@@ -35,9 +35,10 @@ export function MemberInvestmentCreditForm({
     initialState,
   );
   const [amount, setAmount] = useState("");
+  const successToken = state.ok ? state.data.nextRequestToken : null;
   const requestToken =
-    state.ok && state.data.nextRequestToken
-      ? state.data.nextRequestToken
+    successToken
+      ? successToken
       : initialRequestToken;
 
   return (
@@ -60,6 +61,7 @@ export function MemberInvestmentCreditForm({
           triggerLabel="Review investment credit"
           title="Confirm active investment credit"
           description={`${member} - credit ${amount || "not entered"} USDT as active investment. Eligible referral income is credited in the same transaction.`}
+          closeSignal={successToken}
         >
           <form action={action} className="space-y-3">
             <input type="hidden" name="requestToken" value={requestToken} />
